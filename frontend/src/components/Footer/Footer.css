@@ -1,0 +1,30 @@
+/* Compact footer that follows dashboard content. */
+.footer{
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 2px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.footer nav{
+  display: flex;
+  gap: 14px;
+}
+
+.footer a:hover{
+  color: var(--primary);
+}
+
+@media(max-width:500px){
+  .footer{
+    flex-direction: column;
+  }
+
+  .footer nav{
+    gap: 10px;
+  }
+
+}
+

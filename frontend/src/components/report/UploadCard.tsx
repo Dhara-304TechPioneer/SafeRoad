@@ -1,0 +1,3 @@
+// Image selection card that retains a local preview only.
+interface Props { image: string | null; onImage: (value: string | null) => void; }
+export const UploadCard = ({ image, onImage }: Props) => <div className="report-card upload-card">{image ? <><img src={image} alt="Selected pothole" /><div><button type="button" className="button-secondary" onClick={() => onImage(null)}>Remove image</button></div></> : <label className="upload-drop"><strong>Drop a road-damage image here</strong><span>JPG, JPEG or PNG · maximum 10 MB</span><input type="file" accept="image/png,image/jpeg" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImage(URL.createObjectURL(file)); }} /><em>Browse files</em></label>}</div>;

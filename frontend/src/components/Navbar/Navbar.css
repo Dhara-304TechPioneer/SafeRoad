@@ -1,0 +1,160 @@
+/* Responsive sticky navigation. */
+.navbar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 28px;
+  background: color-mix(in srgb,var(--surface) 92%,transparent);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+
+.navbar__brand{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+}
+
+.navbar__logo{
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.navbar__brand small{
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.navbar__search{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 540px;
+  flex: 1;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+}
+
+.navbar__search input{
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.navbar__meta{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.navbar__meta span{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-button,.avatar{
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.notification-button{
+  position: relative;
+}
+
+.notification-button b{
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px;
+}
+
+.emergency-button{
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+
+.avatar{
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media(max-width:900px){
+  .navbar{
+    padding: 0 16px;
+  }
+
+  .navbar__location,.navbar__meta>span:first-child,.emergency-button{
+    display: none;
+  }
+
+  .navbar__brand{
+    min-width: auto;
+  }
+
+  .navbar__search{
+    max-width: none;
+  }
+
+}
+
+@media(max-width:600px){
+  .navbar{
+    gap: 12px;
+    height: 65px;
+  }
+
+  .navbar__brand small,.navbar__search{
+    display: none;
+  }
+
+  .navbar__meta{
+    margin-left: auto;
+  }
+
+}
+

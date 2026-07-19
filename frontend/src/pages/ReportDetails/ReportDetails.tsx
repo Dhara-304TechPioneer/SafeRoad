@@ -1,0 +1,8 @@
+// Full citizen report view with mock lifecycle and discussion data.
+import { useParams } from 'react-router-dom';
+import { managedReports } from '../../data/reportManagementData';
+import { CommentSection } from '../../components/reportManagement/CommentSection';
+import { ReportTimeline } from '../../components/reportManagement/ReportTimeline';
+import { SeverityBadge, StatusBadge } from '../../components/reportManagement/ReportBadges';
+import './ReportDetails.css';
+export const ReportDetails = () => { const { reportId } = useParams(); const report = managedReports.find((item) => item.id === reportId) ?? managedReports[0]; return <main className="report-details"><header><p className="eyebrow">REPORT {report.id}</p><h1>Report details</h1><div className="report-badges"><SeverityBadge severity={report.severity} /><StatusBadge status={report.status} /></div></header><section className="details-grid"><div><section className="detail-section"><div className="detail-image">{report.imageLabel}</div><h2>{report.location}</h2><p>{report.description}</p><dl><div><dt>Road type</dt><dd>{report.roadType}</dd></div><div><dt>Traffic level</dt><dd>{report.traffic}</dd></div><div><dt>Submitted</dt><dd>{report.date}</dd></div><div><dt>AI prediction</dt><dd>{report.aiVerified ? 'Verified pothole' : 'Pending verification'}</dd></div></dl></section><section className="detail-section"><h2>Attachments</h2><div className="attachment-grid"><div>Original uploaded image</div><div>Future repair image</div></div></section><CommentSection /></div><aside className="detail-section"><h2>Status timeline</h2><ReportTimeline status={report.status} /></aside></section></main>; };

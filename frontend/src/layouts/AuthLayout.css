@@ -1,0 +1,130 @@
+/* Responsive split-screen layout for all authentication workflows. */
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.auth-layout__intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(40px, 8vw, 110px);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(96, 165, 250, .26), transparent 32%),
+    linear-gradient(145deg, var(--sidebar), var(--primary-soft));
+}
+
+.auth-layout__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: auto;
+}
+
+.auth-layout__logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.auth-layout__brand strong,
+.auth-layout__brand small {
+  display: block;
+}
+
+.auth-layout__brand small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.auth-layout__copy {
+  max-width: 480px;
+}
+
+.auth-layout__eyebrow {
+  margin: 0 0 12px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.auth-layout__copy h2 {
+  margin: 0;
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -.055em;
+}
+
+.auth-layout__copy > p:last-child {
+  max-width: 420px;
+  margin: 17px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.auth-layout__features {
+  display: grid;
+  gap: 13px;
+  margin: 46px 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-layout__features li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.auth-layout__features svg {
+  color: var(--success);
+}
+
+.auth-layout__form-area {
+  display: grid;
+  place-items: center;
+  padding: 40px 28px;
+}
+
+@media (max-width: 800px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-layout__intro {
+    min-height: 320px;
+    padding: 32px 28px;
+  }
+
+  .auth-layout__brand {
+    margin-bottom: 44px;
+  }
+
+  .auth-layout__features {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-layout__intro {
+    min-height: 265px;
+  }
+
+  .auth-layout__copy h2 {
+    font-size: 30px;
+  }
+
+  .auth-layout__form-area {
+    padding: 24px 14px;
+  }
+}

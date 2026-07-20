@@ -1,11 +1,12 @@
 // Shared contracts for the future SafeRoad authentication API integration.
-export type UserRole = 'citizen' | 'municipal_officer';
+export type UserRole = 'citizen' | 'municipal_officer' | 'admin';
 
 export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
 }
+
 
 export interface LoginRequest {
   email: string;

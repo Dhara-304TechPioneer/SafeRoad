@@ -1,0 +1,8 @@
+@import '../../components/Notification/Notification.css';
+
+/* Page-specific styling for the Notifications page */
+.notification-page__subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 4px 0 0;
+}

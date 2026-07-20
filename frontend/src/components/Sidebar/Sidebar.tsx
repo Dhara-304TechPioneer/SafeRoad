@@ -26,7 +26,7 @@ const navigationItems = [
   { label: 'Municipal Officers', icon: FiUsers, path: '#' },
   { label: 'Analytics', icon: FiBarChart2, path: '/analytics' },
   { label: 'Admin Portal', icon: FiShield, path: '/admin' },
-  { label: 'Notifications', icon: FiBell, path: '#' },
+  { label: 'Notifications', icon: FiBell, path: '/notifications' },
   { label: 'Documents', icon: FiFileText, path: '#' },
 ];
 

@@ -5,7 +5,9 @@ from sqlalchemy import engine_from_config, pool
 
 from app.database.base import Base
 from app.models.user import User
+from app.models.report import Report, ReportAssignment, ReportStatusHistory, ReportComment
 from app.core.config import DATABASE_URL
+
 
 config = context.config
 config.set_main_option('sqlalchemy.url', DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1))

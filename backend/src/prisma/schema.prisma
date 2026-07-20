@@ -1,0 +1,170 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  OFFICER
+  ADMIN
+}
+
+enum ReportStatus {
+  REPORTED
+  AI_VERIFIED
+  OFFICER_ASSIGNED
+  IN_PROGRESS
+  FIXED
+  REJECTED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  REPORT
+  WARNING
+  SUCCESS
+  ADMIN
+  ASSIGNMENT
+}
+
+model User {
+  id            String         @id @default(uuid())
+  fullName      String
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  reports       Report[]
+  comments      Comment[]
+  notifications Notification[]
+  officer       Officer?
+
+  @@map("users")
+}
+
+model Department {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  officers  Officer[]
+  reports   Report[]
+
+  @@map("departments")
+}
+
+model Officer {
+  id           String     @id @default(uuid())
+  userId       String     @unique
+  departmentId String
+  badgeNumber  String     @unique
+  status       String     @default("Available")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  reports      Report[]
+
+  @@map("officers")
+}
+
+model Report {
+  id           String       @id @default(uuid())
+  userId       String
+  title        String
+  description  String
+  latitude     Float
+  longitude    Float
+  address      String
+  city         String
+  status       ReportStatus @default(REPORTED)
+  severity     Severity     @default(MEDIUM)
+  departmentId String?
+  officerId    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  officer      Officer?     @relation(fields: [officerId], references: [id], onDelete: SetNull)
+  comments     Comment[]
+  attachments  Attachment[]
+  aiResults    AIResult[]
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([departmentId])
+  @@index([officerId])
+  @@map("reports")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  userId    String
+  reportId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([reportId])
+  @@map("comments")
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  reportId  String
+  url       String
+  fileType  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("attachments")
+}
+
+model AIResult {
+  id              String   @id @default(uuid())
+  reportId        String
+  potholeDetected Boolean
+  confidenceScore Float
+  details         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("ai_results")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(REPORT)
+  read      Boolean          @default(false)
+  reportId  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report    Report?          @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([read])
+  @@map("notifications")
+}

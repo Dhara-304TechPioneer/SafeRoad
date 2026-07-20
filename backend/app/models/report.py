@@ -77,8 +77,8 @@ class ReportStatusHistory(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     report_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('reports.id'), nullable=False, index=True)
-    previous_status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus), nullable=False)
-    new_status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus), nullable=False)
+    previous_status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus, name='reportstatus', create_type=False), nullable=False)
+    new_status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus, name='reportstatus', create_type=False), nullable=False)
     changed_by: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False, index=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

@@ -9,6 +9,7 @@ import { ReportPothole } from '../pages/ReportPothole';
 import { ReportSuccess } from '../pages/ReportSuccess';
 import { MyReports } from '../pages/MyReports';
 import { ReportDetails } from '../pages/ReportDetails';
+import { Notifications } from '../pages/Notifications';
 import { ForgotPassword } from '../pages/ForgotPassword';
 import { Login } from '../pages/Login';
 import { NotFound } from '../pages/NotFound';
@@ -43,6 +44,7 @@ export const AppRoutes = () => {
         <Route path="/report-success" element={<ProtectedRoute><MainLayout><ReportProvider><ReportSuccess /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/my-reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
         <Route path="/report/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

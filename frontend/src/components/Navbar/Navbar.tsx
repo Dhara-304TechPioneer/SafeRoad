@@ -1,7 +1,6 @@
 // Sticky global navigation with search, context indicators, and user controls.
 import {
   FiAlertTriangle,
-  FiBell,
   FiCloud,
   FiMapPin,
   FiMoon,
@@ -10,6 +9,7 @@ import {
 } from 'react-icons/fi';
 
 import { useTheme } from '../../context/ThemeContext';
+import { NotificationBell } from '../Notification';
 
 import './Navbar.css';
 
@@ -51,14 +51,7 @@ export const Navbar = () => {
         >
           {theme === 'light' ? <FiMoon /> : <FiSun />}
         </button>
-        <button
-          type="button"
-          className="icon-button notification-button"
-          aria-label="Open notifications"
-        >
-          <FiBell />
-          <b>4</b>
-        </button>
+        <NotificationBell />
         <button type="button" className="emergency-button">
           <FiAlertTriangle />
           Emergency

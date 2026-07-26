@@ -3,6 +3,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:800
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const token = localStorage.getItem('access_token');
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -24,11 +25,13 @@ const requestFormData = async <T>(path: string, formData: FormData): Promise<T> 
   const token = localStorage.getItem('access_token');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
   });
+
 
   const payload = await response.json().catch(() => null);
 
@@ -66,6 +69,7 @@ export const mapBackendSeverityToFrontend = (severity: string): Severity => {
 };
 
 export const mapBackendStatusToFrontend = (status: string): ReportStatus => {
+  if (!status) return 'Reported';
   switch (status.toUpperCase()) {
     case 'REPORTED':
       return 'Reported';
@@ -73,14 +77,17 @@ export const mapBackendStatusToFrontend = (status: string): ReportStatus => {
       return 'AI Verified';
     case 'OFFICER_VERIFIED':
     case 'ACKNOWLEDGED':
+    case 'NEEDS_REVIEW':
       return 'Officer Verified';
     case 'ASSIGNED':
+    case 'OFFICER_ASSIGNED':
       return 'Repair Assigned';
     case 'IN_PROGRESS':
     case 'QUALITY_CHECK':
       return 'Under Repair';
     case 'RESOLVED':
     case 'CLOSED':
+    case 'FIXED':
       return 'Completed';
     default:
       return 'Reported';
@@ -88,12 +95,13 @@ export const mapBackendStatusToFrontend = (status: string): ReportStatus => {
 };
 
 export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
-  const severity = mapBackendSeverityToFrontend(report.severity);
-  const status = mapBackendStatusToFrontend(report.status);
+  const severity = mapBackendSeverityToFrontend(report.severity || 'MEDIUM');
+  const status = mapBackendStatusToFrontend(report.status || 'REPORTED');
 
   let formattedDate = '';
   try {
-    const d = new Date(report.created_at);
+    const createdAt = report.created_at || report.createdAt;
+    const d = new Date(createdAt);
     const day = String(d.getDate()).padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = months[d.getMonth()];
@@ -106,11 +114,26 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
     const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
     formattedDate = `${day} ${month} ${year}, ${strTime}`;
   } catch (e) {
-    formattedDate = report.created_at;
+    formattedDate = report.created_at || report.createdAt || 'Just now';
   }
 
   const priority = (severity === 'Critical' || severity === 'High') ? 'Urgent' : 'Standard';
   const aiVerified = report.status !== 'REPORTED';
+
+  const aiResult = report.aiResults?.[0];
+  const aiConfidence = aiResult ? aiResult.confidenceScore : undefined;
+  
+  let aiSeverity = undefined;
+  if (aiResult && aiResult.details) {
+    try {
+      const parsed = typeof aiResult.details === 'string' ? JSON.parse(aiResult.details) : aiResult.details;
+      aiSeverity = parsed.primarySeverity;
+    } catch (e) {
+      console.warn('Failed to parse AIResult details:', e);
+    }
+  }
+
+  const imageUrl = report.image_url || report.attachments?.[0]?.url || null;
 
   return {
     id: report.id,
@@ -123,15 +146,18 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
     status: status,
     aiVerified: aiVerified,
     priority: priority,
-    imageLabel: report.image_url ? 'Pothole Image' : 'No image',
-    image_url: report.image_url,
+    imageLabel: imageUrl ? 'Pothole Image' : 'No image',
+    image_url: imageUrl,
+    aiConfidence,
+    aiSeverity,
   };
 };
 
 export const mapBackendCommentToReportComment = (comment: any): ReportComment => {
   let formattedTime = '';
   try {
-    const d = new Date(comment.created_at);
+    const createdAt = comment.created_at || comment.createdAt;
+    const d = new Date(createdAt);
     const day = String(d.getDate()).padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const month = months[d.getMonth()];
@@ -142,15 +168,14 @@ export const mapBackendCommentToReportComment = (comment: any): ReportComment =>
     formattedTime = 'Just now';
   }
 
-  // Generate initials based on role/userId
-  const initials = comment.user_id === 1 ? 'AP' : 'O';
-  const author = comment.user_id === 1 ? 'Ananya Patel' : `Officer #${comment.user_id}`;
-  const role = comment.user_id === 1 ? 'Citizen' : 'Officer';
+  const authorName = comment.user?.fullName || comment.author || (comment.user_id ? `User #${comment.user_id}` : 'User');
+  const roleName = comment.user?.role === 'OFFICER' || comment.user?.role === 'ADMIN' ? 'Officer' : 'Citizen';
+  const initials = authorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   return {
-    author,
-    role,
-    message: comment.comment,
+    author: authorName,
+    role: roleName,
+    message: comment.comment || comment.content || '',
     timestamp: formattedTime,
     initials,
   };
@@ -164,13 +189,13 @@ const mapStatusToBackend = (status: string): string | undefined => {
     case 'AI Verified':
       return 'AI_VERIFIED';
     case 'Officer Verified':
-      return 'OFFICER_VERIFIED';
+      return 'OFFICER_ASSIGNED';
     case 'Repair Assigned':
-      return 'ASSIGNED';
+      return 'OFFICER_ASSIGNED';
     case 'Under Repair':
       return 'IN_PROGRESS';
     case 'Completed':
-      return 'CLOSED';
+      return 'FIXED';
     default:
       return status.toUpperCase().replace(' ', '_');
   }
@@ -205,24 +230,27 @@ export const getMyReports = async (params: GetReportsParams = {}) => {
   }
 
   const path = `/reports?${query.toString()}`;
-  const response = await requestJson<{ items: any[]; total: number; page: number; size: number }>(path, {
+  const response = await requestJson<any>(path, {
     method: 'GET',
   });
 
+  const rawItems = response.items || response.data || [];
   return {
-    items: response.items.map(mapBackendReportToManagedReport),
-    total: response.total,
-    page: response.page,
-    size: response.size,
+    items: rawItems.map(mapBackendReportToManagedReport),
+    total: response.total ?? response.pagination?.total ?? rawItems.length,
+    page: response.page ?? response.pagination?.page ?? 1,
+    size: response.size ?? response.pagination?.limit ?? rawItems.length,
   };
 };
 
 export const getReportById = async (reportId: string): Promise<ManagedReport> => {
-  const report = await requestJson<any>(`/reports/${reportId}`, {
+  const response = await requestJson<any>(`/reports/${reportId}`, {
     method: 'GET',
   });
-  return mapBackendReportToManagedReport(report);
+  const reportData = response?.data?.report || response;
+  return mapBackendReportToManagedReport(reportData);
 };
+
 
 export const listComments = async (reportId: string): Promise<ReportComment[]> => {
   const comments = await requestJson<any[]>(`/reports/${reportId}/comments`, {
@@ -240,17 +268,20 @@ export const addComment = async (reportId: string, comment: string): Promise<Rep
 };
 
 export const updateReportStatus = async (reportId: string, status: string, remarks?: string) => {
-  return requestJson<{ success: boolean; status: string }>(`/reports/${reportId}/status`, {
-    method: 'POST',
-    body: JSON.stringify({ status: status.toUpperCase().replace(' ', '_'), remarks }),
+  const backendStatus = status.toUpperCase().replace(' ', '_');
+  const response = await requestJson<any>(`/reports/${reportId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: backendStatus, remarks }),
   });
+  return { success: true, status: response.status };
 };
 
 export const verifyReport = async (reportId: string, remarks?: string) => {
-  return requestJson<{ success: boolean; status: string }>(`/reports/${reportId}/verify`, {
-    method: 'POST',
-    body: JSON.stringify({ remarks }),
+  const response = await requestJson<any>(`/reports/${reportId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'AI_VERIFIED', remarks }),
   });
+  return { success: true, status: response.status };
 };
 
 export const submitReport = async (report: ReportRequest) => {

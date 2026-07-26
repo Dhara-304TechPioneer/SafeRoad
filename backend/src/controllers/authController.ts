@@ -27,9 +27,19 @@ export const register = async (
       role: user.role,
     });
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    };
+
+    res.cookie('token', token, cookieOptions);
+
     res.status(201).json({
       status: 'success',
-      access_token: token, // Frontend login alignment key
+      access_token: token,
       data: {
         token,
         user,
@@ -55,14 +65,36 @@ export const login = async (
     }
 
     const data = await authService.loginUser(parseResult.data);
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    };
+
+    res.cookie('token', data.token, cookieOptions);
+
     res.status(200).json({
       status: 'success',
-      access_token: data.token, // Frontend login alignment key
+      access_token: data.token,
       data,
     });
   } catch (error) {
     next(error);
   }
+};
+
+export const logout = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  res.clearCookie('token', { path: '/' });
+  res.status(200).json({
+    status: 'success',
+    message: 'Logged out successfully',
+  });
 };
 
 export const getProfile = async (
@@ -84,3 +116,4 @@ export const getProfile = async (
     next(error);
   }
 };
+

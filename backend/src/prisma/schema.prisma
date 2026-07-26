@@ -16,6 +16,7 @@ enum Role {
 enum ReportStatus {
   REPORTED
   AI_VERIFIED
+  NEEDS_REVIEW
   OFFICER_ASSIGNED
   IN_PROGRESS
   FIXED

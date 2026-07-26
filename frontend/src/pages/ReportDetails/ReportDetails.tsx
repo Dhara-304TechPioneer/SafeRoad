@@ -133,7 +133,25 @@ export const ReportDetails = () => {
               </div>
               <div>
                 <dt>AI prediction</dt>
-                <dd>{report.aiVerified ? 'Verified pothole' : 'Pending verification'}</dd>
+                <dd>
+                  {report.aiVerified ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>Verified pothole</span>
+                      {report.aiConfidence !== undefined && report.aiConfidence !== null && (
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          Confidence: {Math.round(report.aiConfidence * 100)}%
+                        </span>
+                      )}
+                      {report.aiSeverity && (
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                          AI Severity: {report.aiSeverity}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    'Pending verification'
+                  )}
+                </dd>
               </div>
             </dl>
           </section>

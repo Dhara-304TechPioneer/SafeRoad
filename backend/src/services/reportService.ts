@@ -208,3 +208,78 @@ export const deleteReport = async (
 
   return true;
 };
+
+export const getComments = async (
+  reportId: string,
+  user: { userId: string; role: string }
+) => {
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+  });
+
+  if (!report) {
+    throw new AppError('Report not found', 404);
+  }
+
+  if (user.role === 'USER' && report.userId !== user.userId) {
+    throw new AppError('Access forbidden to this report', 403);
+  }
+
+  const comments = await prisma.comment.findMany({
+    where: { reportId },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      user: {
+        select: { id: true, fullName: true, role: true },
+      },
+    },
+  });
+
+  return comments.map((c) => ({
+    id: c.id,
+    report_id: c.reportId,
+    user_id: c.userId,
+    comment: c.content,
+    content: c.content,
+    created_at: c.createdAt,
+    user: c.user,
+  }));
+};
+
+export const addComment = async (
+  reportId: string,
+  userId: string,
+  content: string
+) => {
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+  });
+
+  if (!report) {
+    throw new AppError('Report not found', 404);
+  }
+
+  const newComment = await prisma.comment.create({
+    data: {
+      reportId,
+      userId,
+      content,
+    },
+    include: {
+      user: {
+        select: { id: true, fullName: true, role: true },
+      },
+    },
+  });
+
+  return {
+    id: newComment.id,
+    report_id: newComment.reportId,
+    user_id: newComment.userId,
+    comment: newComment.content,
+    content: newComment.content,
+    created_at: newComment.createdAt,
+    user: newComment.user,
+  };
+};
+

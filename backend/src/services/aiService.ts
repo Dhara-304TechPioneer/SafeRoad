@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/db';
+import { env } from '../config/env';
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001';
+const AI_SERVICE_URL = env.AI_SERVICE_URL;
 
 interface AIDetectionResult {
   class_name: string;

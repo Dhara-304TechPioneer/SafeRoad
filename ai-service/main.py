@@ -35,6 +35,22 @@ async def health():
         "status": "healthy"
     }
 
+from fastapi import File, UploadFile
+from app.services.detection_service import DetectionService
+
+@app.post("/detect")
+async def detect_potholes_legacy(image: UploadFile = File(..., description="The road image file to analyze")):
+    result = DetectionService.run_detection(image)
+    detected = result.get("total_detections", 0) > 0
+    detections = result.get("detections", [])
+    primary = detections[0] if detections else None
+    return {
+        "detected": detected,
+        "confidence": primary["confidence"] if primary else 0.0,
+        "boundingBox": primary["box"] if primary else [],
+        "severity": primary["severity"] if primary else "Low"
+    }
+
 # Mount sub-routers under /api prefix
 app.include_router(detection_router, prefix="/api")
 

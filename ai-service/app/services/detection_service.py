@@ -85,6 +85,7 @@ class DetectionService:
         # 3. Request YOLO model instance
         model = YOLOModelLoader.get_model()
         if model is None:
+            logger.error("[AI Service] YOLO model not loaded.")
             if os.path.exists(orig_path):
                 os.remove(orig_path)
             return {
@@ -95,13 +96,15 @@ class DetectionService:
                 "total_detections": 0,
                 "detections": [],
                 "annotated_image_path": None,
-                "error": "YOLO model weights file (best.pt) is missing. Detection service is currently unavailable."
+                "error": "YOLO model not loaded or weights missing."
             }
 
         # 4. Perform Inference & Annotation
         try:
-            results = model(orig_path)
+            results = model(orig_path, conf=0.05)
             detections = []
+
+
             
             cv_img = cv2.imread(orig_path)
             if cv_img is None:
@@ -183,11 +186,14 @@ class DetectionService:
                     (255, 255, 255), 
                     font_thickness
                 )
-            
-            # Save final output
-            annotated_filename = f"annotated_{unique_id}{file_ext}"
-            annotated_path = os.path.join(uploads_dir, annotated_filename)
-            cv2.imwrite(annotated_path, cv_img)
+
+            # Save annotated output if detections found, otherwise return null
+            annotated_image_path = None
+            if len(detections) > 0:
+                annotated_filename = f"annotated_{unique_id}{file_ext}"
+                annotated_path = os.path.join(uploads_dir, annotated_filename)
+                cv2.imwrite(annotated_path, cv_img)
+                annotated_image_path = f"/uploads/{annotated_filename}"
             
             # Clean up original image to save space
             if os.path.exists(orig_path):
@@ -200,7 +206,7 @@ class DetectionService:
                 "height": height,
                 "total_detections": len(detections),
                 "detections": detections,
-                "annotated_image_path": f"/uploads/{annotated_filename}",
+                "annotated_image_path": annotated_image_path,
                 "error": None
             }
             

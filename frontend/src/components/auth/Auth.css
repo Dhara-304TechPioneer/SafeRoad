@@ -203,3 +203,16 @@
     padding: 26px 20px;
   }
 }
+
+.auth-error-banner {
+  padding: 10px 14px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  line-height: 1.45;
+  text-align: center;
+}

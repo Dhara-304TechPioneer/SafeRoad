@@ -1,8 +1,9 @@
+import { env } from './config/env'; // Validate environment variables on startup
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { errorHandler, AppError } from './middleware/errorHandler';
 
@@ -11,25 +12,31 @@ import reportRoutes from './routes/reportRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 
-// Load environment variables
-dotenv.config();
-
 const app: Express = express();
+
+// Parse configured CORS origins
+const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
 
 // Global Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:3000',
-    ],
+    
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl) or if listed in allowedOrigins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Not allowed by CORS: ${origin}`));
+      }
+    },
     credentials: true,
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 app.use(morgan('dev'));
+
 
 // Static Files Serving
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

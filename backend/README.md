@@ -1,19 +1,36 @@
 # SafeRoad Backend
 
-This backend provides the Phase 2 foundation for SafeRoad with FastAPI, SQLAlchemy, PostgreSQL, Alembic, and JWT-based authentication.
+This is the backend service for the SafeRoad project built using **Express, TypeScript, and Prisma**.
 
-## Features
-- FastAPI application entrypoint
-- PostgreSQL database connection
-- SQLAlchemy ORM models and session management
-- Alembic migrations
-- JWT authentication for register/login/me
-- Health check endpoint
+## Architecture & Features
 
-## Quick start
-1. Create and activate a Python virtual environment.
-2. Install dependencies: `pip install -r requirements.txt`
-3. Copy `.env.example` to `.env` and adjust the values.
-4. Start PostgreSQL via Docker Compose: `docker compose up -d`
-5. Run database migrations: `alembic upgrade head`
-6. Start the API: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+The backend source code is located in the [src/](file:///C:/Users/DHARA/PROJECTS/SafeRoads/SafeRoad/backend/src) directory.
+
+### Key Features
+- **Express & TypeScript**: RESTful API endpoints for authentication, reports, comments, analytics, and uploads.
+- **Prisma ORM**: Interfacing with PostgreSQL for data models (`User`, `Report`, `Comment`, `AIResult`, `Attachment`, `Notification`).
+- **AI Integration**: Automatic dispatch of uploaded pothole report images to `ai-service` (`POST /api/detection/detect`) for computer vision inference.
+- **Real-Time WebSockets**: Socket.io integration for instant status updates and administrative notifications.
+- **Analytics API**: Endpoints providing report statistics, status distributions, city metrics, and officer performance.
+
+### Quick Start
+1. Ensure the PostgreSQL database is running.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Copy `.env.example` to `.env` and configure `DATABASE_URL`.
+4. Push database schema using Prisma:
+   ```bash
+   npx prisma db push
+   ```
+5. Run in development mode:
+   ```bash
+   npm run dev
+   ```
+6. Build and start production server:
+   ```bash
+   npm run build
+   npm run start
+   ```
+

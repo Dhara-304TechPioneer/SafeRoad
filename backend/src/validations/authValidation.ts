@@ -17,7 +17,9 @@ export const registerSchema = z
       .string()
       .min(6, 'Password must be at least 6 characters')
       .max(100),
+    role: z.string().optional(),
   })
+
   .refine((data) => data.fullName || data.name, {
     message: 'Either fullName or name must be provided',
     path: ['fullName'],

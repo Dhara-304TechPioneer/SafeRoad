@@ -1,8 +1,9 @@
 import { createServer } from 'http';
 import app from './app';
 import { initSocket } from './socket/socket';
+import { env } from './config/env';
 
-const PORT = process.env.PORT || 8000;
+const PORT = env.PORT;
 
 // Create HTTP Server wrapping Express App
 const httpServer = createServer(app);

@@ -20,15 +20,24 @@ export const registerUser = async (input: any) => {
   // 2. Hash password
   const passwordHash = await hashPassword(password);
 
-  // 3. Create user (role defaults to USER)
+  let userRole: any = 'USER';
+  if (input.role) {
+    const r = String(input.role).toUpperCase();
+    if (r === 'OFFICER' || r === 'MUNICIPAL_OFFICER') userRole = 'OFFICER';
+    else if (r === 'ADMIN' || r === 'ADMINISTRATOR') userRole = 'ADMIN';
+    else userRole = 'USER';
+  }
+
+  // 3. Create user
   const user = await prisma.user.create({
     data: {
       fullName: resolvedFullName,
       email,
       password: passwordHash,
-      role: 'USER',
+      role: userRole,
     },
   });
+
 
   // 4. Return user info without password
   return {

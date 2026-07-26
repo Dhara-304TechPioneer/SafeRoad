@@ -1,22 +1,38 @@
+# =========================
 # Python
+# =========================
 __pycache__/
 *.pyc
 .venv/
 .env
+.pytest_cache/
+.mypy_cache/
 
-# Node
+# =========================
+# Node.js
+# =========================
 node_modules/
 dist/
 
+# =========================
 # VS Code
+# =========================
 .vscode/
 
+# =========================
 # Logs
-*.log__pycache__/
-*.pyc
-.venv/
-.env
+# =========================
+*.log
+
+# =========================
+# Uploads
+# =========================
 uploads/
-.pytest_cache/
-.mypy_cache/
-node_modules/
+
+# =========================
+# AI / YOLO
+# =========================
+ai-service/dataset/
+ai-service/runs/
+ai-service/models/
+*.pt

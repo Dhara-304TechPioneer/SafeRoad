@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "This backend provides the Phase 2 foundation for SafeRoad with FastAPI, SQLAlchemy, PostgreSQL, Alembic, and JWT-based authentication.",
+  "description": "This backend provides the SafeRoad API using Express, TypeScript, and Prisma.",
   "main": "index.js",
   "directories": {
     "test": "tests"
@@ -10,7 +10,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --detectOpenHandles --runInBand",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -31,15 +33,24 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "prisma": "^6.19.3",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.12",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^7.0.2"
+    "typescript": "~5.7.3"
+  },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma"
   }
 }

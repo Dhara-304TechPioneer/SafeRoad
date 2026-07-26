@@ -48,6 +48,19 @@ export const create = async (
       if (!aiResult) {
         warning =
           'AI analysis is pending: AI service is currently unavailable or timed out.';
+      } else {
+        let finalStatus = 'REPORTED';
+        if (aiResult.potholeDetected && aiResult.confidenceScore >= 0.7) {
+          finalStatus = 'AI_VERIFIED';
+        } else {
+          finalStatus = 'NEEDS_REVIEW';
+        }
+
+        await prisma.report.update({
+          where: { id: report.id },
+          data: { status: finalStatus as any },
+        });
+        report.status = finalStatus as any;
       }
     }
 
@@ -307,3 +320,45 @@ export const remove = async (
     next(error);
   }
 };
+
+export const getComments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      return next(new AppError('Not authenticated', 401));
+    }
+
+    const id = req.params.id as string;
+    const comments = await reportService.getComments(id, req.user);
+    res.status(200).json(comments);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addComment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      return next(new AppError('Not authenticated', 401));
+    }
+
+    const id = req.params.id as string;
+    const content = req.body.comment || req.body.content;
+    if (!content || typeof content !== 'string') {
+      return next(new AppError('Comment text is required', 400));
+    }
+
+    const comment = await reportService.addComment(id, req.user.userId, content);
+    res.status(201).json(comment);
+  } catch (error) {
+    next(error);
+  }
+};
+

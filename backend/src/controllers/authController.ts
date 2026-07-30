@@ -39,9 +39,7 @@ export const register = async (
 
     res.status(201).json({
       status: 'success',
-      access_token: token,
       data: {
-        token,
         user,
       },
     });
@@ -78,8 +76,7 @@ export const login = async (
 
     res.status(200).json({
       status: 'success',
-      access_token: data.token,
-      data,
+      data: { user: data.user },
     });
   } catch (error) {
     next(error);
@@ -116,4 +113,3 @@ export const getProfile = async (
     next(error);
   }
 };
-

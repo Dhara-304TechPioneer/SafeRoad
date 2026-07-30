@@ -74,8 +74,8 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
 
     expect(resCitizen.status).toBe(201);
     expect(resCitizen.body.status).toBe('success');
-    expect(resCitizen.body.data.token).toBeDefined();
-    citizenToken = resCitizen.body.data.token;
+    expect(resCitizen.body.access_token).toBeUndefined();
+    citizenToken = generateToken({ userId: resCitizen.body.data.user.id, email: citizenUser.email, role: 'USER' });
     if (resCitizen.headers['set-cookie']) {
       citizenCookie = resCitizen.headers['set-cookie'][0];
     }
@@ -87,8 +87,7 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
 
     expect(resOfficer.status).toBe(201);
     expect(resOfficer.body.status).toBe('success');
-    expect(resOfficer.body.data.token).toBeDefined();
-    officerToken = resOfficer.body.data.token;
+    expect(resOfficer.body.access_token).toBeUndefined();
     const officerUserId = resOfficer.body.data.user.id;
     if (resOfficer.headers['set-cookie']) {
       officerCookie = resOfficer.headers['set-cookie'][0];
@@ -130,7 +129,7 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
       });
 
     expect(resLogin.status).toBe(200);
-    expect(resLogin.body.access_token).toBeDefined();
+    expect(resLogin.body.access_token).toBeUndefined();
 
     const resProfile = await request(app)
       .get('/api/auth/me')

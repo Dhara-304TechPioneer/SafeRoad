@@ -1,12 +1,10 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '');
 
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const token = localStorage.getItem('access_token');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
@@ -22,13 +20,9 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 const requestFormData = async <T>(path: string, formData: FormData): Promise<T> => {
-  const token = localStorage.getItem('access_token');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     body: formData,
   });
 
@@ -308,4 +302,3 @@ export const uploadImage = async (image: File) => {
 
 export const getLocation = () => Promise.resolve();
 export const runAI = () => Promise.resolve();
-

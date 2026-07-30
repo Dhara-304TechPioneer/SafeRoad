@@ -1,12 +1,10 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '');
 
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const token = localStorage.getItem('access_token');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
@@ -31,9 +29,7 @@ import type {
 
 export interface BackendAuthResponse {
   status: string;
-  access_token: string;
   data: {
-    token: string;
     user: {
       id: string;
       fullName: string;
@@ -54,7 +50,6 @@ export const login = async (request: LoginRequest): Promise<BackendAuthResponse>
     }),
   });
 
-  localStorage.setItem('access_token', response.access_token);
   return response;
 };
 
@@ -66,11 +61,9 @@ export const register = async (request: RegisterRequest): Promise<BackendAuthRes
       name: request.fullName,
       email: request.email,
       password: request.password,
-      role: request.role,
     }),
   });
 
-  localStorage.setItem('access_token', response.access_token);
   return response;
 };
 
@@ -88,6 +81,10 @@ export const getProfile = async () => {
       };
     };
   }>('/auth/me');
+};
+
+export const logout = async (): Promise<void> => {
+  await requestJson('/auth/logout', { method: 'POST' });
 };
 
 export const forgotPassword = (email: string) => Promise.resolve(email);

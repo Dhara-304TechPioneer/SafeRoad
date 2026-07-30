@@ -67,7 +67,7 @@ export const Register = () => {
         name: backendUser.fullName,
         email: backendUser.email,
         role: mapRole(backendUser.role),
-      }, response.access_token);
+      });
 
       navigate('/dashboard');
     } catch (err: any) {

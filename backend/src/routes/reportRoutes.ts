@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import {
   create,
   getAll,
@@ -11,6 +11,7 @@ import {
 import { protect } from '../middleware/authMiddleware';
 import { uploadImage } from '../controllers/uploadController';
 import { parseSingleImage } from '../middleware/uploadMiddleware';
+import { requireRole } from '../middleware/requireRole';
 
 const router = Router();
 
@@ -25,11 +26,21 @@ router.get('/my', (req, res, next) => {
 });
 router.get('/', getAll);
 router.get('/:id', getById);
-router.patch('/:id', update);
-router.put('/:id', update);
+const requireManagementRoleForPrivilegedChanges = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const privilegedFields = ['status', 'departmentId', 'officerId'];
+  if (privilegedFields.some((field) => Object.prototype.hasOwnProperty.call(req.body, field))) {
+    return requireRole('OFFICER', 'ADMIN')(req, res, next);
+  }
+  next();
+};
+router.patch('/:id', requireManagementRoleForPrivilegedChanges, update);
+router.put('/:id', requireManagementRoleForPrivilegedChanges, update);
 router.delete('/:id', remove);
 router.get('/:id/comments', getComments);
 router.post('/:id/comments', addComment);
 
 export default router;
-

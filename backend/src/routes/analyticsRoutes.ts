@@ -10,6 +10,7 @@ import {
   getRecent,
 } from '../controllers/analyticsController';
 import { protect } from '../middleware/authMiddleware';
+import { requireRole } from '../middleware/requireRole';
 
 const router = Router();
 
@@ -19,10 +20,10 @@ router.use(protect);
 router.get('/dashboard', getDashboard);
 router.get('/status-distribution', getStatusDistribution);
 router.get('/severity-distribution', getSeverityDistribution);
-router.get('/reports-by-city', getReportsByCity);
-router.get('/monthly-trends', getMonthlyTrends);
-router.get('/department-performance', getDepartmentPerformance);
-router.get('/officer-performance', getOfficerPerformance);
-router.get('/recent', getRecent);
+router.get('/reports-by-city', requireRole('OFFICER', 'ADMIN'), getReportsByCity);
+router.get('/monthly-trends', requireRole('OFFICER', 'ADMIN'), getMonthlyTrends);
+router.get('/department-performance', requireRole('ADMIN'), getDepartmentPerformance);
+router.get('/officer-performance', requireRole('OFFICER', 'ADMIN'), getOfficerPerformance);
+router.get('/recent', requireRole('OFFICER', 'ADMIN'), getRecent);
 
 export default router;

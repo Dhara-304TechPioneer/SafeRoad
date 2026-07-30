@@ -4,7 +4,7 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
 
-export const registerUser = async (input: any) => {
+export const registerUser = async (input: RegisterInput) => {
   const { fullName, name, email, password } = input;
   const resolvedFullName = fullName || name || '';
 
@@ -20,26 +20,34 @@ export const registerUser = async (input: any) => {
   // 2. Hash password
   const passwordHash = await hashPassword(password);
 
-  let userRole: any = 'USER';
-  if (input.role) {
-    const r = String(input.role).toUpperCase();
-    if (r === 'OFFICER' || r === 'MUNICIPAL_OFFICER') userRole = 'OFFICER';
-    else if (r === 'ADMIN' || r === 'ADMINISTRATOR') userRole = 'ADMIN';
-    else userRole = 'USER';
-  }
-
   // 3. Create user
   const user = await prisma.user.create({
     data: {
       fullName: resolvedFullName,
       email,
       password: passwordHash,
-      role: userRole,
+      role: 'USER',
     },
   });
 
 
   // 4. Return user info without password
+  return {
+    id: user.id,
+    fullName: user.fullName,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+};
+
+export const updateUserRole = async (userId: string, role: 'OFFICER' | 'ADMIN' | 'USER') => {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { role },
+  });
+
   return {
     id: user.id,
     fullName: user.fullName,

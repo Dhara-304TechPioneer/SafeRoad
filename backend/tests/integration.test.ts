@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../src/app';
 import prisma from '../src/config/db';
+import { generateToken } from '../src/utils/jwt';
 
 describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
   let citizenToken: string;
@@ -8,20 +9,20 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
   let officerToken: string;
   let officerCookie: string;
   let officerId: string;
+  let adminId: string;
+  let adminToken: string;
   let reportId: string;
 
   const citizenUser = {
     fullName: 'Citizen Tester',
     email: `citizen_${Date.now()}@saferoad.test`,
     password: 'Password123!',
-    role: 'USER',
   };
 
   const officerUser = {
     fullName: 'Officer Tester',
     email: `officer_${Date.now()}@saferoad.test`,
     password: 'Password123!',
-    role: 'OFFICER',
   };
 
   beforeAll(async () => {
@@ -43,7 +44,7 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
       }
       await prisma.user.deleteMany({
         where: {
-          email: { in: [citizenUser.email, officerUser.email] },
+          email: { in: [citizenUser.email, officerUser.email, `admin_${citizenUser.email}`] },
         },
       });
 
@@ -55,6 +56,17 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
   });
 
   it('1. Should register citizen and officer users', async () => {
+    const admin = await prisma.user.create({
+      data: {
+        fullName: 'Admin Tester',
+        email: `admin_${citizenUser.email}`,
+        password: 'not-used-in-test',
+        role: 'ADMIN',
+      },
+    });
+    adminId = admin.id;
+    adminToken = generateToken({ userId: admin.id, email: admin.email, role: admin.role });
+
     // Register citizen
     const resCitizen = await request(app)
       .post('/api/auth/register')
@@ -62,8 +74,8 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
 
     expect(resCitizen.status).toBe(201);
     expect(resCitizen.body.status).toBe('success');
-    expect(resCitizen.body.access_token).toBeDefined();
-    citizenToken = resCitizen.body.access_token;
+    expect(resCitizen.body.data.token).toBeDefined();
+    citizenToken = resCitizen.body.data.token;
     if (resCitizen.headers['set-cookie']) {
       citizenCookie = resCitizen.headers['set-cookie'][0];
     }
@@ -75,12 +87,21 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
 
     expect(resOfficer.status).toBe(201);
     expect(resOfficer.body.status).toBe('success');
-    expect(resOfficer.body.access_token).toBeDefined();
-    officerToken = resOfficer.body.access_token;
+    expect(resOfficer.body.data.token).toBeDefined();
+    officerToken = resOfficer.body.data.token;
     const officerUserId = resOfficer.body.data.user.id;
     if (resOfficer.headers['set-cookie']) {
       officerCookie = resOfficer.headers['set-cookie'][0];
     }
+
+    const promoteRes = await request(app)
+      .patch(`/api/users/${officerUserId}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'OFFICER' });
+
+    expect(promoteRes.status).toBe(200);
+    expect(promoteRes.body.data.user.role).toBe('OFFICER');
+    officerToken = generateToken({ userId: officerUserId, email: officerUser.email, role: 'OFFICER' });
 
     // Create department & officer profile for assignment FK constraint test
     const dept = await prisma.department.upsert({

@@ -7,8 +7,6 @@ services:
       POSTGRES_DB: saferoad
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -23,10 +21,9 @@ services:
       dockerfile: Dockerfile
     container_name: saferoad-ai-service
     restart: unless-stopped
-    ports:
-      - "8001:8001"
     environment:
       - PORT=8001
+      - AI_INTERNAL_API_KEY=${AI_INTERNAL_API_KEY:?Set AI_INTERNAL_API_KEY in the root .env file}
     volumes:
       - ai_uploads:/app/uploads
       - ai_models:/app/models
@@ -44,6 +41,7 @@ services:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@postgres:5432/saferoad?schema=public
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the root .env file}
       - AI_SERVICE_URL=http://ai-service:8001
+      - AI_INTERNAL_API_KEY=${AI_INTERNAL_API_KEY:?Set AI_INTERNAL_API_KEY in the root .env file}
       - CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
     depends_on:
       postgres:

@@ -55,6 +55,9 @@ export const analyzeReportImage = async (
     );
     const response = await fetch(`${AI_SERVICE_URL}/api/detection/detect`, {
       method: 'POST',
+      headers: {
+        'X-Internal-Api-Key': env.AI_INTERNAL_API_KEY,
+      },
       body: formData,
       signal: controller.signal,
     });

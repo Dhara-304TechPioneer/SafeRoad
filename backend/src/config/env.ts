@@ -12,6 +12,7 @@ const envSchema = z.object({
     z.number().positive()
   ).default(8000),
   AI_SERVICE_URL: z.string().default('http://localhost:8001'),
+  AI_INTERNAL_API_KEY: z.string().min(1, 'AI_INTERNAL_API_KEY environment variable is required'),
   CORS_ORIGIN: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });

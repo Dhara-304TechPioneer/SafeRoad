@@ -34,5 +34,6 @@ uploads/
 # =========================
 ai-service/dataset/
 ai-service/runs/
+runs/
 ai-service/models/
 *.pt

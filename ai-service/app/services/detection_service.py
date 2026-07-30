@@ -101,7 +101,8 @@ class DetectionService:
 
         # 4. Perform Inference & Annotation
         try:
-            results = model(orig_path, conf=0.05)
+            # conf=0.25 is standard for fine-tuned object detection (prevents false positives)
+            results = model(orig_path, conf=0.25)
             detections = []
 
 

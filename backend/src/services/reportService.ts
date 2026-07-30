@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { analyzeReportImage } from './aiService';
 import {
   CreateReportInput,
   UpdateReportInput,

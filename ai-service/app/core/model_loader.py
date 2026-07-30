@@ -1,5 +1,6 @@
 import os
 import logging
+from pathlib import Path
 from ultralytics import YOLO
 
 logger = logging.getLogger("uvicorn.error")
@@ -15,12 +16,15 @@ class YOLOModelLoader:
             return cls._model
 
         # 1. Look for custom fine-tuned pothole model at ai-service/models/best.pt
-        custom_model_path = os.path.join(os.getcwd(), "models", "best.pt")
+        ai_service_dir = Path(__file__).resolve().parents[2]
+        custom_model_path = ai_service_dir / "models" / "best.pt"
+        if not custom_model_path.exists():
+            custom_model_path = Path.cwd() / "models" / "best.pt"
         
-        if os.path.exists(custom_model_path):
+        if custom_model_path.exists():
             try:
                 logger.info(f"[AI Service] Loading custom YOLO model from {custom_model_path}...")
-                cls._model = YOLO(custom_model_path)
+                cls._model = YOLO(str(custom_model_path))
                 cls._model_name = "best.pt"
                 cls._is_loaded = True
                 logger.info("[AI Service] Custom YOLO model (best.pt) loaded successfully.")
@@ -45,4 +49,5 @@ class YOLOModelLoader:
     @classmethod
     def get_model_name(cls) -> str:
         return cls._model_name
+
 

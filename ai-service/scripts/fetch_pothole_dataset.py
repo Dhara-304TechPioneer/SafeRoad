@@ -1,17 +1,32 @@
 import os
-import cv2
-import numpy as np
+import sys
+import shutil
+import zipfile
+import urllib.request
+import random
 from pathlib import Path
 
-def generate_pothole_dataset():
-    dataset_dir = Path(__file__).resolve().parents[1] / "dataset"
-    dataset_dir.mkdir(exist_ok=True)
-    
-    (dataset_dir / "images" / "train").mkdir(parents=True, exist_ok=True)
-    (dataset_dir / "images" / "val").mkdir(parents=True, exist_ok=True)
-    (dataset_dir / "labels" / "train").mkdir(parents=True, exist_ok=True)
-    (dataset_dir / "labels" / "val").mkdir(parents=True, exist_ok=True)
+DATASET_URL = "https://github.com/jaygala24/pothole-detection/releases/download/v1.0.0/Pothole.Dataset.IVCNZ.zip"
 
+def fetch_and_prepare_pothole_dataset(val_split: float = 0.2, seed: int = 42):
+    """
+    Downloads the real IVCNZ Pothole Dataset (1,243 real annotated road images),
+    splits it into train/val subsets, and generates data.yaml for YOLOv8 training.
+    """
+    script_dir = Path(__file__).resolve().parent
+    ai_service_dir = script_dir.parent
+    dataset_dir = ai_service_dir / "dataset"
+    
+    train_img_dir = dataset_dir / "images" / "train"
+    val_img_dir = dataset_dir / "images" / "val"
+    train_lbl_dir = dataset_dir / "labels" / "train"
+    val_lbl_dir = dataset_dir / "labels" / "val"
+    
+    # Create directories
+    for d in [train_img_dir, val_img_dir, train_lbl_dir, val_lbl_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Write data.yaml configuration
     yaml_content = f"""path: {dataset_dir.as_posix()}
 train: images/train
 val: images/val
@@ -22,48 +37,84 @@ names:
     with open(dataset_dir / "data.yaml", "w", encoding="utf-8") as f:
         f.write(yaml_content)
 
-    print(f"[+] Configured dataset structure at {dataset_dir}")
+    print(f"[+] Dataset structure configured at: {dataset_dir}")
+    print(f"[+] dataset/data.yaml created successfully.")
 
-    # Generate 15 distinct road images with pothole annotations for training
-    np.random.seed(42)
-    img_w, img_h = 640, 480
+    # Check if dataset already has images
+    existing_train_imgs = list(train_img_dir.glob("*.jpg")) + list(train_img_dir.glob("*.png"))
+    if len(existing_train_imgs) >= 100:
+        print(f"[OK] Found existing dataset with {len(existing_train_imgs)} training images in {train_img_dir}. Skipping download.")
+        return
 
-    for i in range(1, 16):
-        # Create dark asphalt road texture
-        road_img = np.random.randint(60, 90, (img_h, img_w, 3), dtype=np.uint8)
-        
-        # Add road lane markings
-        cv2.line(road_img, (img_w // 2, 0), (img_w // 2, img_h), (200, 200, 200), 5)
-        
-        # Generate pothole coordinates
-        cx_rel = np.random.uniform(0.3, 0.7)
-        cy_rel = np.random.uniform(0.3, 0.7)
-        w_rel = np.random.uniform(0.15, 0.35)
-        h_rel = np.random.uniform(0.15, 0.30)
-        
-        cx, cy = int(cx_rel * img_w), int(cy_rel * img_h)
-        axes_w, axes_h = int(w_rel * img_w / 2), int(h_rel * img_h / 2)
-        
-        # Draw dark crater ellipse (pothole)
-        cv2.ellipse(road_img, (cx, cy), (axes_w, axes_h), np.random.randint(0, 45), 0, 360, (20, 20, 20), -1)
-        cv2.ellipse(road_img, (cx, cy), (int(axes_w * 1.1), int(axes_h * 1.1)), np.random.randint(0, 45), 0, 360, (40, 40, 40), 2)
-        
-        filename = f"pothole_{i:02d}.jpg"
-        label_filename = f"pothole_{i:02d}.txt"
-        
-        # Save images
-        cv2.imwrite(str(dataset_dir / "images" / "train" / filename), road_img)
-        cv2.imwrite(str(dataset_dir / "images" / "val" / filename), road_img)
-        
-        # Write YOLO label (<class> <x_center> <y_center> <width> <height>)
-        label_text = f"0 {cx_rel:.4f} {cy_rel:.4f} {w_rel:.4f} {h_rel:.4f}\n"
-        with open(dataset_dir / "labels" / "train" / label_filename, "w") as f:
-            f.write(label_text)
-        with open(dataset_dir / "labels" / "val" / label_filename, "w") as f:
-            f.write(label_text)
+    temp_zip = ai_service_dir / "pothole_dataset.zip"
+    extract_dir = ai_service_dir / "temp_pothole_extract"
 
-    print("[OK] Successfully generated 15 annotated pothole dataset samples with YOLO labels.")
+    try:
+        if not temp_zip.exists():
+            print(f"[+] Downloading real pothole dataset from:\n    {DATASET_URL}")
+            def _progress(block_num, block_size, total_size):
+                downloaded = block_num * block_size
+                if total_size > 0:
+                    percent = min(100.0, downloaded / total_size * 100.0)
+                    sys.stdout.write(f"\rDownloading: {percent:.1f}% ({downloaded // (1024*1024)}MB / {total_size // (1024*1024)}MB)")
+                    sys.stdout.flush()
 
+            urllib.request.urlretrieve(DATASET_URL, temp_zip, _progress)
+            print("\n[+] Download complete.")
+
+        print(f"[+] Extracting dataset archive...")
+        with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+
+        # Collect image and label file pairs
+        raw_files = list(extract_dir.rglob("*.jpg")) + list(extract_dir.rglob("*.png"))
+        image_label_pairs = []
+
+        for img_p in raw_files:
+            txt_p = img_p.with_suffix(".txt")
+            if txt_p.exists():
+                image_label_pairs.append((img_p, txt_p))
+
+        print(f"[+] Found {len(image_label_pairs)} valid image-label pairs.")
+
+        if len(image_label_pairs) == 0:
+            raise ValueError("No valid image-label pairs found in extracted archive.")
+
+        # Shuffle deterministically
+        random.seed(seed)
+        random.shuffle(image_label_pairs)
+
+        num_val = int(len(image_label_pairs) * val_split)
+        val_pairs = image_label_pairs[:num_val]
+        train_pairs = image_label_pairs[num_val:]
+
+        print(f"[+] Splitting dataset into {len(train_pairs)} training samples and {len(val_pairs)} validation samples...")
+
+        # Copy files to target YOLO directories
+        for img_p, txt_p in train_pairs:
+            shutil.copy(img_p, train_img_dir / img_p.name)
+            shutil.copy(txt_p, train_lbl_dir / txt_p.name)
+
+        for img_p, txt_p in val_pairs:
+            shutil.copy(img_p, val_img_dir / img_p.name)
+            shutil.copy(txt_p, val_lbl_dir / txt_p.name)
+
+        print(f"[SUCCESS] Dataset prepared successfully!")
+        print(f"  - Train: {len(train_pairs)} images -> {train_img_dir}")
+        print(f"  - Val:   {len(val_pairs)} images -> {val_img_dir}")
+
+    except Exception as e:
+        print(f"[!] Error downloading/preparing real dataset: {e}")
+        print("[!] Falling back to local/existing files if present.")
+    finally:
+        # Clean up temporary files
+        if extract_dir.exists():
+            shutil.rmtree(extract_dir, ignore_errors=True)
+        if temp_zip.exists():
+            temp_zip.unlink(missing_ok=True)
+        if (ai_service_dir / "pothole_test.zip").exists():
+            (ai_service_dir / "pothole_test.zip").unlink(missing_ok=True)
 
 if __name__ == "__main__":
-    generate_pothole_dataset()
+    fetch_and_prepare_pothole_dataset()
+

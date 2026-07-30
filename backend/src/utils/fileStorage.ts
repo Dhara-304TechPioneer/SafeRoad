@@ -2,6 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
+const extensionByMimeType: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
 export const getUploadDirectoryPath = (): string => {
   const now = new Date();
   const year = now.getFullYear().toString();
@@ -22,8 +28,12 @@ export const getUploadDirectoryPath = (): string => {
   return uploadPath;
 };
 
-export const generateUniqueFileName = (originalName: string): string => {
-  const ext = path.extname(originalName).toLowerCase();
+export const generateUniqueFileName = (mimeType: string): string => {
+  const ext = extensionByMimeType[mimeType];
+  if (!ext) {
+    throw new Error('Unsupported image MIME type');
+  }
+
   const timestamp = Date.now();
   const uuid = crypto.randomUUID();
   return `${timestamp}-${uuid}${ext}`;

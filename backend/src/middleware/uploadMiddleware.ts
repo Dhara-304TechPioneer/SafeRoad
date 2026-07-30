@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     try {
-      const fileName = generateUniqueFileName(file.originalname);
+      const fileName = generateUniqueFileName(file.mimetype);
       cb(null, fileName);
     } catch (error: any) {
       cb(error, '');
@@ -32,7 +32,6 @@ const fileFilter = (
 ) => {
   const allowedMimeTypes = [
     'image/jpeg',
-    'image/jpg',
     'image/png',
     'image/webp',
   ];

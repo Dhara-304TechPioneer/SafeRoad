@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import cv2
 from PIL import Image
 from fastapi import UploadFile, HTTPException
@@ -73,7 +74,7 @@ class DetectionService:
         os.makedirs(uploads_dir, exist_ok=True)
             
         file_ext = os.path.splitext(file.filename or "image.jpg")[1]
-        unique_id = str(int(time.time()))
+        unique_id = uuid.uuid4().hex
         orig_filename = f"orig_{unique_id}{file_ext}"
         orig_path = os.path.join(uploads_dir, orig_filename)
         

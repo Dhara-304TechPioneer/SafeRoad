@@ -59,8 +59,12 @@ graph TD
 Run the entire SafeRoad system locally with a single command:
 
 ```bash
+cp .env.example .env
+# Set strong, unique POSTGRES_PASSWORD and JWT_SECRET values in .env.
 docker compose up --build
 ```
+
+> **Security warning:** `.env` secrets must be changed before any non-local deployment. Never commit the populated `.env` file.
 
 ### Service Endpoints
 

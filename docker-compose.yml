@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: saferoad
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
     ports:
       - "5432:5432"
     volumes:
@@ -41,8 +41,8 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/saferoad?schema=public
-      - JWT_SECRET=dev-secret-key-saferoad-safe-road-2026
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@postgres:5432/saferoad?schema=public
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the root .env file}
       - AI_SERVICE_URL=http://ai-service:8001
       - CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
     depends_on:

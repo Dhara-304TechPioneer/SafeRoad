@@ -25,7 +25,7 @@ services:
       - PORT=8001
       - AI_INTERNAL_API_KEY=${AI_INTERNAL_API_KEY:?Set AI_INTERNAL_API_KEY in the root .env file}
     volumes:
-      - ai_uploads:/app/uploads
+      - backend_uploads:/app/uploads
       - ai_models:/app/models
 
   backend:
@@ -67,5 +67,4 @@ services:
 volumes:
   postgres_data:
   backend_uploads:
-  ai_uploads:
   ai_models:

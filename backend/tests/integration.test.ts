@@ -2,6 +2,13 @@ import request from 'supertest';
 import app from '../src/app';
 import prisma from '../src/config/db';
 import { generateToken } from '../src/utils/jwt';
+import * as authService from '../src/services/authService';
+import { hashPassword } from '../src/utils/password';
+
+const getSetCookies = (headers: Record<string, unknown>): string[] => {
+  const value = headers['set-cookie'];
+  return Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+};
 
 describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
   let citizenToken: string;
@@ -238,5 +245,151 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
 
     expect(fixedRes.status).toBe(200);
     expect(fixedRes.body.status).toBe('FIXED');
+  });
+
+  it('8. Locks a password reset after five failed OTP attempts and rejects the correct OTP while locked', async () => {
+    const otp = await authService.requestPasswordReset({ email: citizenUser.email });
+    expect(otp).toBeDefined();
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        authService.verifyPasswordResetOtp({ email: citizenUser.email, code: '000000' })
+      ).rejects.toThrow('Recovery credentials are invalid, expired, or temporarily locked');
+    }
+
+    const reset = await prisma.passwordReset.findFirst({
+      where: { user: { email: citizenUser.email } },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(reset?.failedAttempts).toBe(5);
+    expect(reset?.lockedUntil).not.toBeNull();
+
+    await expect(
+      authService.verifyPasswordResetOtp({ email: citizenUser.email, code: otp! })
+    ).rejects.toThrow('Recovery credentials are invalid, expired, or temporarily locked');
+
+    await prisma.passwordReset.update({
+      where: { id: reset!.id },
+      data: { lockedUntil: new Date(Date.now() - 1) },
+    });
+
+    await expect(
+      authService.verifyPasswordResetOtp({ email: citizenUser.email, code: otp! })
+    ).resolves.toEqual(expect.any(String));
+  });
+
+  it('9. Rotates refresh tokens, revokes them on logout, and rejects expired refresh tokens', async () => {
+    const refreshUser = {
+      fullName: 'Refresh Token Tester',
+      email: `refresh_${Date.now()}@saferoad.test`,
+      password: 'Password123!',
+    };
+    const registerResponse = await request(app).post('/api/auth/register').send(refreshUser);
+    expect(registerResponse.status).toBe(201);
+    const initialRefreshCookie = getSetCookies(registerResponse.headers)
+      .find((cookie) => cookie.startsWith('refreshToken='));
+    expect(initialRefreshCookie).toBeDefined();
+
+    const refreshResponse = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', initialRefreshCookie!);
+    expect(refreshResponse.status).toBe(200);
+    expect(getSetCookies(refreshResponse.headers)
+      .some((cookie) => cookie.startsWith('token='))).toBe(true);
+    const rotatedRefreshCookie = getSetCookies(refreshResponse.headers)
+      .find((cookie) => cookie.startsWith('refreshToken='));
+    expect(rotatedRefreshCookie).toBeDefined();
+
+    const logoutResponse = await request(app)
+      .post('/api/auth/logout')
+      .set('Cookie', rotatedRefreshCookie!);
+    expect(logoutResponse.status).toBe(200);
+    const revokedRefreshResponse = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', rotatedRefreshCookie!);
+    expect(revokedRefreshResponse.status).toBe(401);
+
+    const refreshUserId = registerResponse.body.data.user.id;
+    const expiredSecret = 'expired-refresh-token-secret';
+    const expiredToken = await prisma.refreshToken.create({
+      data: {
+        userId: refreshUserId,
+        tokenHash: await hashPassword(expiredSecret),
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+    const expiredRefreshResponse = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', `refreshToken=${expiredToken.id}.${expiredSecret}`);
+    expect(expiredRefreshResponse.status).toBe(401);
+
+    await prisma.user.delete({ where: { id: refreshUserId } });
+  });
+
+  it('10. Revokes the refresh-token chain when a rotated token is replayed', async () => {
+    const reuseUser = {
+      fullName: 'Refresh Reuse Tester',
+      email: `refresh_reuse_${Date.now()}@saferoad.test`,
+      password: 'Password123!',
+    };
+    const registerResponse = await request(app).post('/api/auth/register').send(reuseUser);
+    expect(registerResponse.status).toBe(201);
+    const originalRefreshCookie = getSetCookies(registerResponse.headers)
+      .find((cookie) => cookie.startsWith('refreshToken='));
+    const firstRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', originalRefreshCookie!);
+    expect(firstRefresh.status).toBe(200);
+    const newestRefreshCookie = getSetCookies(firstRefresh.headers)
+      .find((cookie) => cookie.startsWith('refreshToken='));
+
+    const replayResponse = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', originalRefreshCookie!);
+    expect(replayResponse.status).toBe(401);
+
+    const newestTokenResponse = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', newestRefreshCookie!);
+    expect(newestTokenResponse.status).toBe(401);
+    const reuseUserId = registerResponse.body.data.user.id;
+    expect(await prisma.refreshToken.count({ where: { userId: reuseUserId } })).toBe(0);
+
+    await prisma.user.delete({ where: { id: reuseUserId } });
+  });
+
+  it('11. Locks an account after five failed logins and allows login after the lock expires', async () => {
+    const loginLockUser = {
+      fullName: 'Login Lockout Tester',
+      email: `login_lock_${Date.now()}@saferoad.test`,
+      password: 'Password123!',
+    };
+    const user = await authService.registerUser(loginLockUser);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        authService.loginUser({ email: loginLockUser.email, password: 'wrong-password' })
+      ).rejects.toThrow('Invalid email or password');
+    }
+
+    const lockedUser = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(lockedUser?.failedLoginAttempts).toBe(5);
+    expect(lockedUser?.lockedUntil).not.toBeNull();
+    await expect(
+      authService.loginUser({ email: loginLockUser.email, password: loginLockUser.password })
+    ).rejects.toThrow('Invalid email or password');
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lockedUntil: new Date(Date.now() - 1) },
+    });
+    await expect(
+      authService.loginUser({ email: loginLockUser.email, password: loginLockUser.password })
+    ).resolves.toMatchObject({ user: { id: user.id } });
+
+    const unlockedUser = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(unlockedUser?.failedLoginAttempts).toBe(0);
+    expect(unlockedUser?.lockedUntil).toBeNull();
+    await prisma.user.delete({ where: { id: user.id } });
   });
 });

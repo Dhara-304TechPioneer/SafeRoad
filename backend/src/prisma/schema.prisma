@@ -44,14 +44,50 @@ model User {
   email         String         @unique
   password      String
   role          Role           @default(USER)
+  failedLoginAttempts Int      @default(0)
+  lockedUntil   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   reports       Report[]
   comments      Comment[]
   notifications Notification[]
   officer       Officer?
+  passwordResets PasswordReset[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([userId, usedAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id             String   @id @default(uuid())
+  userId         String
+  otpHash        String
+  resetTokenHash String?
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_resets")
 }
 
 model Department {

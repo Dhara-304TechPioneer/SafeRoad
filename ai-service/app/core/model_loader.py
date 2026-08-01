@@ -34,7 +34,11 @@ class YOLOModelLoader:
 
         # 2. Fall back to standard pretrained YOLOv8 model for functional end-to-end pipeline
         try:
-            logger.info("[AI Service] Custom 'models/best.pt' not found. Wiring pretrained 'yolov8n.pt' as active AI model...")
+            logger.warning(
+                "[AI Service] Custom 'models/best.pt' is missing; falling back to stock "
+                "'yolov8n.pt' (COCO classes). Detection results will not reflect real potholes "
+                "until custom pothole-trained weights are supplied."
+            )
             cls._model = YOLO("yolov8n.pt")
             cls._model_name = "yolov8n.pt"
             cls._is_loaded = True
@@ -49,5 +53,4 @@ class YOLOModelLoader:
     @classmethod
     def get_model_name(cls) -> str:
         return cls._model_name
-
 

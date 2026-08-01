@@ -1,8 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
-import { registerSchema, loginSchema } from '../validations/authValidation';
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  verifyOtpSchema,
+  resetPasswordSchema,
+} from '../validations/authValidation';
 import * as authService from '../services/authService';
 import { AppError } from '../middleware/errorHandler';
 import { generateToken } from '../utils/jwt';
+
+const ACCESS_COOKIE_MAX_AGE = 60 * 60 * 1000;
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  maxAge: ACCESS_COOKIE_MAX_AGE,
+  path: '/',
+};
+
+const refreshCookieOptions = {
+  ...accessCookieOptions,
+  maxAge: REFRESH_COOKIE_MAX_AGE,
+};
 
 export const register = async (
   req: Request,
@@ -27,15 +49,9 @@ export const register = async (
       role: user.role,
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/',
-    };
-
-    res.cookie('token', token, cookieOptions);
+    const refreshToken = await authService.createRefreshToken(user.id);
+    res.cookie('token', token, accessCookieOptions);
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
     res.status(201).json({
       status: 'success',
@@ -64,15 +80,9 @@ export const login = async (
 
     const data = await authService.loginUser(parseResult.data);
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/',
-    };
-
-    res.cookie('token', data.token, cookieOptions);
+    const refreshToken = await authService.createRefreshToken(data.user.id);
+    res.cookie('token', data.token, accessCookieOptions);
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
     res.status(200).json({
       status: 'success',
@@ -85,13 +95,31 @@ export const login = async (
 
 export const logout = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  res.clearCookie('token', { path: '/' });
-  res.status(200).json({
-    status: 'success',
-    message: 'Logged out successfully',
-  });
+  try {
+    await authService.revokeRefreshToken(req.cookies?.refreshToken);
+    res.clearCookie('token', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
+    res.status(200).json({
+      status: 'success',
+      message: 'Logged out successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = await authService.rotateRefreshToken(req.cookies?.refreshToken ?? '');
+    res.cookie('token', data.token, accessCookieOptions);
+    res.cookie('refreshToken', data.refreshToken, refreshCookieOptions);
+    res.status(200).json({ status: 'success' });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getProfile = async (
@@ -109,6 +137,53 @@ export const getProfile = async (
       status: 'success',
       data: { user },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const validationError = (issues: { message: string }[]) =>
+  new AppError(issues.map((issue) => issue.message).join(', '), 400);
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = forgotPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) return next(validationError(parseResult.error.issues));
+
+    const otp = await authService.requestPasswordReset(parseResult.data);
+    const response: { status: string; message: string; data?: { otp: string } } = {
+      status: 'success',
+      message: 'If an account exists for that email, a verification code has been sent.',
+    };
+    if (otp && process.env.NODE_ENV !== 'production') {
+      console.info(`[Auth] Password reset OTP for ${parseResult.data.email}: ${otp}`);
+      response.data = { otp };
+    }
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = verifyOtpSchema.safeParse(req.body);
+    if (!parseResult.success) return next(validationError(parseResult.error.issues));
+
+    const token = await authService.verifyPasswordResetOtp(parseResult.data);
+    res.status(200).json({ status: 'success', data: { token } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = resetPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) return next(validationError(parseResult.error.issues));
+
+    await authService.resetPassword(parseResult.data);
+    res.status(200).json({ status: 'success', message: 'Password reset successfully' });
   } catch (error) {
     next(error);
   }

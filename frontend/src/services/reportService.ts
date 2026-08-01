@@ -1,23 +1,8 @@
+import { authenticatedRequestJson } from './authService';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '');
 
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(payload?.detail ?? payload?.message ?? 'Request failed');
-  }
-
-  return payload as T;
-};
+const requestJson = authenticatedRequestJson;
 
 const requestFormData = async <T>(path: string, formData: FormData): Promise<T> => {
   const response = await fetch(`${API_BASE_URL}${path}`, {

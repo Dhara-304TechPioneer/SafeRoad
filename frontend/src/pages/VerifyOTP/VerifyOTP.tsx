@@ -16,8 +16,18 @@ export const VerifyOTP = () => {
       setError('Enter the complete six-digit code.');
       return;
     }
-    await verifyOTP({ email: '', code });
-    navigate('/reset-password');
+    const email = sessionStorage.getItem('passwordResetEmail');
+    if (!email) {
+      setError('Request a new verification code before continuing.');
+      return;
+    }
+    try {
+      const response = await verifyOTP({ email, code });
+      sessionStorage.setItem('passwordResetToken', response.data.token);
+      navigate('/reset-password');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to verify the code.');
+    }
   };
 
   return <AuthCard><AuthHeader title="Verify your email" description="Enter the six-digit code we sent to your email address." /><form className="auth-form" onSubmit={handleSubmit}><OTPInput value={code} onChange={setCode} error={error} /><p className="auth-note">Code expires in 09:59. Didn't receive it? <button className="auth-inline-button" type="button">Resend OTP</button></p><AuthButton type="submit">Verify code</AuthButton></form></AuthCard>;

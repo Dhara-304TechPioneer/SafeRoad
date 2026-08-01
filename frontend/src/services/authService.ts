@@ -1,7 +1,34 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '');
 
-const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+let refreshInFlight: Promise<boolean> | null = null;
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+};
+
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+};
+
+const requestJson = async <T>(
+  path: string,
+  init?: RequestInit,
+  retryAfterRefresh = false
+): Promise<T> => {
+  const makeRequest = () => fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
@@ -10,6 +37,14 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     ...init,
   });
 
+  let response = await makeRequest();
+  if (response.status === 401 && retryAfterRefresh) {
+    if (await refreshAccessToken()) {
+      response = await makeRequest();
+    } else {
+      redirectToLogin();
+    }
+  }
 
   const payload = await response.json().catch(() => null);
 
@@ -19,6 +54,9 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
   return payload as T;
 };
+
+export const authenticatedRequestJson = <T>(path: string, init?: RequestInit) =>
+  requestJson<T>(path, init, true);
 
 import type {
   LoginRequest,
@@ -80,21 +118,30 @@ export const getProfile = async () => {
         updatedAt: string;
       };
     };
-  }>('/auth/me');
+  }>('/auth/me', undefined, true);
 };
 
 export const logout = async (): Promise<void> => {
   await requestJson('/auth/logout', { method: 'POST' });
 };
 
-export const forgotPassword = (email: string) => Promise.resolve(email);
-
-export const verifyOTP = (request: OTPRequest) => {
-  void request;
-  return Promise.resolve();
+export const forgotPassword = async (email: string) => {
+  return requestJson<{ status: string; message: string; data?: { otp: string } }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
 };
 
-export const resetPassword = (request: ResetPasswordRequest) => {
-  void request;
-  return Promise.resolve();
+export const verifyOTP = async (request: OTPRequest) => {
+  return requestJson<{ status: string; data: { token: string } }>('/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+};
+
+export const resetPassword = async (request: ResetPasswordRequest) => {
+  return requestJson<{ status: string; message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
 };

@@ -3,6 +3,21 @@ import { RegisterInput, LoginInput } from '../validations/authValidation';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
+import { randomBytes, randomInt } from 'crypto';
+import {
+  ForgotPasswordInput,
+  VerifyOtpInput,
+  ResetPasswordInput,
+} from '../validations/authValidation';
+
+const PASSWORD_RESET_TTL_MS = 10 * 60 * 1000;
+const PASSWORD_RESET_MAX_ATTEMPTS = 5;
+const PASSWORD_RESET_LOCKOUT_MS = 15 * 60 * 1000;
+const RECOVERY_CREDENTIALS_ERROR = 'Recovery credentials are invalid, expired, or temporarily locked. Try again later or request a new code.';
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const INVALID_LOGIN_ERROR = 'Invalid email or password';
 
 export const registerUser = async (input: RegisterInput) => {
   const { fullName, name, email, password } = input;
@@ -67,14 +82,36 @@ export const loginUser = async (input: LoginInput) => {
   });
 
   if (!user) {
-    throw new AppError('Invalid email or password', 401);
+    throw new AppError(INVALID_LOGIN_ERROR, 401);
+  }
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new AppError(INVALID_LOGIN_ERROR, 401);
   }
 
   // 2. Verify password
   const isMatch = await comparePassword(password, user.password);
   if (!isMatch) {
-    throw new AppError('Invalid email or password', 401);
+    const priorFailedAttempts =
+      user.lockedUntil && user.lockedUntil <= new Date() ? 0 : user.failedLoginAttempts;
+    const failedLoginAttempts = priorFailedAttempts + 1;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts,
+        lockedUntil:
+          failedLoginAttempts >= LOGIN_MAX_ATTEMPTS
+            ? new Date(Date.now() + LOGIN_LOCKOUT_MS)
+            : null,
+      },
+    });
+    throw new AppError(INVALID_LOGIN_ERROR, 401);
   }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
 
   // 3. Generate Token
   const token = generateToken({
@@ -114,4 +151,202 @@ export const getUserProfile = async (userId: string) => {
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
+};
+
+export const createRefreshToken = async (userId: string): Promise<string> => {
+  const secret = randomBytes(32).toString('hex');
+  const refreshToken = await prisma.refreshToken.create({
+    data: {
+      userId,
+      tokenHash: await hashPassword(secret),
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    },
+  });
+
+  return `${refreshToken.id}.${secret}`;
+};
+
+export const rotateRefreshToken = async (token: string) => {
+  const [tokenId, secret] = token.split('.', 2);
+  const storedToken = tokenId && secret
+    ? await prisma.refreshToken.findUnique({
+        where: { id: tokenId },
+        include: { user: true },
+      })
+    : null;
+
+  if (!storedToken) {
+    throw new AppError('Invalid or expired refresh token', 401);
+  }
+  if (!(await comparePassword(secret, storedToken.tokenHash))) {
+    throw new AppError('Invalid or expired refresh token', 401);
+  }
+  if (storedToken.expiresAt <= new Date()) {
+    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+    throw new AppError('Invalid or expired refresh token', 401);
+  }
+  if (storedToken.usedAt) {
+    // A valid secret for an already-used record indicates token theft or a race.
+    await prisma.refreshToken.deleteMany({ where: { userId: storedToken.userId } });
+    throw new AppError('Invalid or expired refresh token', 401);
+  }
+
+  let reuseDetected = false;
+  let refreshToken: string;
+  try {
+    refreshToken = await prisma.$transaction(async (tx) => {
+      const markedUsed = await tx.refreshToken.updateMany({
+        where: { id: storedToken.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (markedUsed.count !== 1) {
+        reuseDetected = true;
+        throw new Error('Refresh token was already used');
+      }
+
+      const nextSecret = randomBytes(32).toString('hex');
+      const nextToken = await tx.refreshToken.create({
+        data: {
+          userId: storedToken.userId,
+          tokenHash: await hashPassword(nextSecret),
+          expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        },
+      });
+      return `${nextToken.id}.${nextSecret}`;
+    });
+  } catch (error) {
+    if (reuseDetected) {
+      await prisma.refreshToken.deleteMany({ where: { userId: storedToken.userId } });
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+    throw error;
+  }
+
+  return {
+    token: generateToken({
+      userId: storedToken.user.id,
+      email: storedToken.user.email,
+      role: storedToken.user.role,
+    }),
+    refreshToken,
+  };
+};
+
+export const revokeRefreshToken = async (token?: string): Promise<void> => {
+  const [tokenId, secret] = token?.split('.', 2) ?? [];
+  if (!tokenId || !secret) return;
+
+  const storedToken = await prisma.refreshToken.findUnique({ where: { id: tokenId } });
+  if (storedToken && (await comparePassword(secret, storedToken.tokenHash))) {
+    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+  }
+};
+
+export const requestPasswordReset = async ({ email }: ForgotPasswordInput) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  // Do not disclose whether an account exists for the supplied email address.
+  if (!user) {
+    return null;
+  }
+
+  const otp = randomInt(100000, 1000000).toString();
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+  await prisma.$transaction([
+    prisma.passwordReset.deleteMany({ where: { userId: user.id } }),
+    prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        otpHash: await hashPassword(otp),
+        expiresAt,
+      },
+    }),
+  ]);
+
+  return otp;
+};
+
+export const verifyPasswordResetOtp = async ({ email, code }: VerifyOtpInput) => {
+  const reset = await prisma.passwordReset.findFirst({
+    where: {
+      user: { email },
+      expiresAt: { gt: new Date() },
+      verifiedAt: null,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!reset || (reset.lockedUntil && reset.lockedUntil > new Date())) {
+    throw new AppError(RECOVERY_CREDENTIALS_ERROR, 400);
+  }
+
+  if (!(await comparePassword(code, reset.otpHash))) {
+    const failedAttempts = reset.failedAttempts + 1;
+    await prisma.passwordReset.update({
+      where: { id: reset.id },
+      data: {
+        failedAttempts,
+        lockedUntil:
+          failedAttempts >= PASSWORD_RESET_MAX_ATTEMPTS
+            ? new Date(Date.now() + PASSWORD_RESET_LOCKOUT_MS)
+            : undefined,
+      },
+    });
+    throw new AppError(RECOVERY_CREDENTIALS_ERROR, 400);
+  }
+
+  const token = randomBytes(32).toString('hex');
+  await prisma.passwordReset.update({
+    where: { id: reset.id },
+    data: {
+      resetTokenHash: await hashPassword(token),
+      verifiedAt: new Date(),
+    },
+  });
+
+  // Prefix the opaque secret with the reset record id so failed reset-password
+  // attempts can be counted against the exact targeted recovery record.
+  return `${reset.id}.${token}`;
+};
+
+export const resetPassword = async ({ token, password }: ResetPasswordInput) => {
+  const [resetId, resetSecret] = token.split('.', 2);
+  const reset = resetId && resetSecret
+    ? await prisma.passwordReset.findFirst({
+    where: {
+      id: resetId,
+      verifiedAt: { not: null },
+      resetTokenHash: { not: null },
+      expiresAt: { gt: new Date() },
+    },
+  })
+    : null;
+
+  if (!reset || (reset.lockedUntil && reset.lockedUntil > new Date())) {
+    throw new AppError(RECOVERY_CREDENTIALS_ERROR, 400);
+  }
+
+  if (!(await comparePassword(resetSecret, reset.resetTokenHash!))) {
+    const failedAttempts = reset.failedAttempts + 1;
+    await prisma.passwordReset.update({
+      where: { id: reset.id },
+      data: {
+        failedAttempts,
+        lockedUntil:
+          failedAttempts >= PASSWORD_RESET_MAX_ATTEMPTS
+            ? new Date(Date.now() + PASSWORD_RESET_LOCKOUT_MS)
+            : undefined,
+      },
+    });
+    throw new AppError(RECOVERY_CREDENTIALS_ERROR, 400);
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: reset.userId },
+      data: { password: await hashPassword(password) },
+    }),
+    prisma.passwordReset.delete({ where: { id: reset.id } }),
+  ]);
 };

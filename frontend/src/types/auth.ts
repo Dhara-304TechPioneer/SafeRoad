@@ -31,6 +31,7 @@ export interface OTPRequest {
 }
 
 export interface ResetPasswordRequest {
+  token: string;
   password: string;
   confirmPassword: string;
 }

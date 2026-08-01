@@ -10,7 +10,8 @@ export interface TokenPayload {
 }
 
 export const generateToken = (payload: TokenPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+  // Access JWTs are intentionally short-lived; the server-revocable refresh token extends sessions.
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 };
 
 export const verifyToken = (token: string): TokenPayload => {

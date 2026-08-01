@@ -30,7 +30,7 @@ router.post('/login', authAttemptLimiter, login);
 router.post('/forgot-password', authAttemptLimiter, forgotPassword);
 router.post('/verify-otp', authAttemptLimiter, verifyOtp);
 router.post('/reset-password', authAttemptLimiter, resetPassword);
-router.post('/refresh', refresh);
+router.post('/refresh', authAttemptLimiter, refresh);
 router.post('/logout', logout);
 router.get('/profile', protect, getProfile);
 router.get('/me', protect, getProfile);

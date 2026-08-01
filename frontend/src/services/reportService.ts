@@ -1,16 +1,28 @@
-import { authenticatedRequestJson } from './authService';
+import {
+  authenticatedRequestJson,
+  redirectToLogin,
+  refreshAccessToken,
+} from './authService';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '');
 
 const requestJson = authenticatedRequestJson;
 
 const requestFormData = async <T>(path: string, formData: FormData): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const makeRequest = () => fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     credentials: 'include',
     body: formData,
   });
 
+  let response = await makeRequest();
+  if (response.status === 401) {
+    if (await refreshAccessToken()) {
+      response = await makeRequest();
+    } else {
+      redirectToLogin();
+    }
+  }
 
   const payload = await response.json().catch(() => null);
 

@@ -19,7 +19,7 @@ from ultralytics import YOLO
 
 def train_pothole_model(
     model_name: str = "yolov8s.pt",
-    epochs: int = 30,
+    epochs: int = 50,
     imgsz: int = 640,
     batch: int = 8,
     patience: int = 10,
@@ -77,7 +77,7 @@ def train_pothole_model(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train YOLOv8 Pothole Detection Model")
     parser.add_argument("--model", type=str, default="yolov8s.pt", help="Base model (yolov8n.pt, yolov8s.pt, yolov8m.pt)")
-    parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     parser.add_argument("--imgsz", type=int, default=640, help="Image resolution")
     parser.add_argument("--batch", type=int, default=8, help="Batch size")
     parser.add_argument("--patience", type=int, default=10, help="Early stopping patience")
@@ -90,4 +90,3 @@ if __name__ == "__main__":
         batch=args.batch,
         patience=args.patience,
     )
-

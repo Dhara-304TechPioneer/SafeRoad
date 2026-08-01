@@ -2,7 +2,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:800
 
 let refreshInFlight: Promise<boolean> | null = null;
 
-const refreshAccessToken = async (): Promise<boolean> => {
+export const refreshAccessToken = async (): Promise<boolean> => {
   if (!refreshInFlight) {
     refreshInFlight = fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
@@ -17,7 +17,7 @@ const refreshAccessToken = async (): Promise<boolean> => {
   return refreshInFlight;
 };
 
-const redirectToLogin = () => {
+export const redirectToLogin = () => {
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
     window.location.assign('/login');
   }

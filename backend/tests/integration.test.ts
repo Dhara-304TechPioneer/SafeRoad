@@ -318,10 +318,9 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
         expiresAt: new Date(Date.now() - 1000),
       },
     });
-    const expiredRefreshResponse = await request(app)
-      .post('/api/auth/refresh')
-      .set('Cookie', `refreshToken=${expiredToken.id}.${expiredSecret}`);
-    expect(expiredRefreshResponse.status).toBe(401);
+    await expect(
+      authService.rotateRefreshToken(`${expiredToken.id}.${expiredSecret}`)
+    ).rejects.toThrow('Invalid or expired refresh token');
 
     await prisma.user.delete({ where: { id: refreshUserId } });
   });

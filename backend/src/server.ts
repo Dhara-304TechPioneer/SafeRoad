@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import app from './app';
 import { initSocket } from './socket/socket';
 import { env } from './config/env';
+import { startCleanupJob } from './scripts/cleanupExpiredTokens';
 
 const PORT = env.PORT;
 
@@ -13,6 +14,7 @@ initSocket(httpServer);
 
 const server = httpServer.listen(PORT, () => {
   console.log(`🚀 SafeRoad Backend Server running on port ${PORT}`);
+  startCleanupJob();
 });
 
 // Handle unhandled rejections and uncaught exceptions

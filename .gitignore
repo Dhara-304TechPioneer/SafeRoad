@@ -23,6 +23,31 @@ dist/
 # Logs
 # =========================
 *.log
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+
+# =========================
+# Node.js
+# =========================
+node_modules/
+dist/
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# Logs
+# =========================
+*.log
 
 # =========================
 # Uploads
@@ -36,4 +61,5 @@ ai-service/dataset/
 ai-service/runs/
 runs/
 ai-service/models/
+ai-service/models/*.pt
 *.pt

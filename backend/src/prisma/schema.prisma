@@ -1,71 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-enum Role {
-  USER
-  OFFICER
-  ADMIN
-}
-
-enum ReportStatus {
-  REPORTED
-  AI_VERIFIED
-  NEEDS_REVIEW
-  OFFICER_ASSIGNED
-  IN_PROGRESS
-  FIXED
-  REJECTED
-}
-
-enum Severity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum NotificationType {
-  REPORT
-  WARNING
-  SUCCESS
-  ADMIN
-  ASSIGNMENT
-}
-
 model User {
-  id            String         @id @default(uuid())
-  fullName      String
-  email         String         @unique
-  password      String
-  role          Role           @default(USER)
-  failedLoginAttempts Int      @default(0)
-  lockedUntil   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  reports       Report[]
-  comments      Comment[]
-  notifications Notification[]
-  officer       Officer?
-  passwordResets PasswordReset[]
-  refreshTokens RefreshToken[]
+  id                  String          @id @default(uuid())
+  fullName            String
+  email               String          @unique
+  password            String
+  role                Role            @default(USER)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  failedLoginAttempts Int             @default(0)
+  lockedUntil         DateTime?
+  comments            Comment[]
+  notifications       Notification[]
+  officer             Officer?
+  passwordResets      PasswordReset[]
+  refreshTokens       RefreshToken[]
+  reports             Report[]
 
   @@map("users")
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
   tokenHash String
   expiresAt DateTime
+  createdAt DateTime  @default(now())
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -74,16 +43,16 @@ model RefreshToken {
 }
 
 model PasswordReset {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   userId         String
   otpHash        String
   resetTokenHash String?
   expiresAt      DateTime
   verifiedAt     DateTime?
-  failedAttempts Int      @default(0)
+  createdAt      DateTime  @default(now())
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
-  createdAt      DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -109,35 +78,35 @@ model Officer {
   status       String     @default("Available")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  department   Department @relation(fields: [departmentId], references: [id])
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   reports      Report[]
 
   @@map("officers")
 }
 
 model Report {
-  id           String       @id @default(uuid())
-  userId       String
-  title        String
-  description  String
-  latitude     Float
-  longitude    Float
-  address      String
-  city         String
-  status       ReportStatus @default(REPORTED)
-  severity     Severity     @default(MEDIUM)
-  departmentId String?
-  officerId    String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  officer      Officer?     @relation(fields: [officerId], references: [id], onDelete: SetNull)
-  comments     Comment[]
-  attachments  Attachment[]
-  aiResults    AIResult[]
+  id            String         @id @default(uuid())
+  userId        String
+  title         String
+  description   String
+  latitude      Float
+  longitude     Float
+  address       String
+  city          String
+  status        ReportStatus   @default(REPORTED)
+  severity      Severity       @default(MEDIUM)
+  departmentId  String?
+  officerId     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  aiResults     AIResult[]
+  attachments   Attachment[]
+  comments      Comment[]
   notifications Notification[]
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  officer       Officer?       @relation(fields: [officerId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -153,8 +122,8 @@ model Comment {
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([reportId])
@@ -198,10 +167,41 @@ model Notification {
   reportId  String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+  report    Report?          @relation(fields: [reportId], references: [id])
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  report    Report?          @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([read])
   @@map("notifications")
+}
+
+enum Role {
+  USER
+  OFFICER
+  ADMIN
+}
+
+enum ReportStatus {
+  REPORTED
+  AI_VERIFIED
+  OFFICER_ASSIGNED
+  IN_PROGRESS
+  FIXED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  REPORT
+  WARNING
+  SUCCESS
+  ADMIN
+  ASSIGNMENT
 }

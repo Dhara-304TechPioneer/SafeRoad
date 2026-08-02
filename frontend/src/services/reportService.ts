@@ -204,7 +204,7 @@ export interface GetReportsParams {
 export const getMyReports = async (params: GetReportsParams = {}) => {
   const query = new URLSearchParams();
   if (params.page) query.append('page', String(params.page));
-  if (params.size) query.append('size', String(params.size));
+  if (params.size) query.append('limit', String(params.size));
   if (params.search) query.append('search', params.search);
   
   if (params.status && params.status !== 'All') {
@@ -219,8 +219,10 @@ export const getMyReports = async (params: GetReportsParams = {}) => {
   if (params.sort_by) {
     query.append('sort_by', params.sort_by);
   }
+  query.append('mine', 'true');
 
   const path = `/reports?${query.toString()}`;
+  
   const response = await requestJson<any>(path, {
     method: 'GET',
   });
@@ -285,7 +287,7 @@ export const submitReport = async (report: ReportRequest) => {
       latitude: Number(report.location.latitude || 0),
       longitude: Number(report.location.longitude || 0),
       address: [report.location.roadName, report.location.area, report.location.city].filter(Boolean).join(', '),
-      image_url: report.image,
+      imageurl: report.image,
     }),
   });
 };

@@ -4,6 +4,8 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
 import { randomBytes, randomInt } from 'crypto';
+import { sendOtpEmail } from "./emailService";
+
 import {
   ForgotPasswordInput,
   VerifyOtpInput,
@@ -243,14 +245,18 @@ export const revokeRefreshToken = async (token?: string): Promise<void> => {
 };
 
 export const requestPasswordReset = async ({ email }: ForgotPasswordInput) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  console.log(`🔍 [AuthService] Password reset requested for email: "${email}" (normalized: "${normalizedEmail}")`);
 
-  // Do not disclose whether an account exists for the supplied email address.
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
   if (!user) {
-    return null;
+    console.warn(`⚠️ [AuthService] Password reset failed - User not found for email: "${normalizedEmail}"`);
+    throw new AppError('No account found with that email address.', 404);
   }
 
   const otp = randomInt(100000, 1000000).toString();
+  console.log('✅ [AuthService] OTP Generated:', otp);
   const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
 
   await prisma.$transaction([
@@ -263,7 +269,11 @@ export const requestPasswordReset = async ({ email }: ForgotPasswordInput) => {
       },
     }),
   ]);
+  console.log('✅ [AuthService] OTP Stored in Database');
 
+  console.log('📧 [AuthService] Calling sendOtpEmail...');
+  await sendOtpEmail(user.email, otp);
+  console.log('✅ [AuthService] Returned from sendOtpEmail successfully');
   return otp;
 };
 

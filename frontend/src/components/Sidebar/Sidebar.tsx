@@ -1,5 +1,6 @@
 // Primary navigation groups, ready for route links and role-based access later.
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   FiActivity,
   FiBarChart2,
@@ -21,19 +22,62 @@ const navigationItems = [
   { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
   { label: 'Live Map', icon: FiMap, path: '/live-map' },
   { label: 'Pothole Reports', icon: FiClipboard, path: '/my-reports' },
-  { label: 'AI Detection', icon: FiActivity, path: '#' },
-  { label: 'Repair Requests', icon: FiTool, path: '#' },
-  { label: 'Municipal Officers', icon: FiUsers, path: '#' },
-  { label: 'Analytics', icon: FiBarChart2, path: '/analytics' },
-  { label: 'Admin Portal', icon: FiShield, path: '/admin' },
-  { label: 'Notifications', icon: FiBell, path: '/notifications' },
-  { label: 'Documents', icon: FiFileText, path: '#' },
+
+  {
+    label: 'AI Detection',
+    icon: FiActivity,
+    path: '#',
+    roles: ['citizen', 'municipal_officer', 'admin'],
+  },
+
+  {
+    label: 'Repair Requests',
+    icon: FiTool,
+    path: '#',
+    roles: ['municipal_officer', 'admin'],
+  },
+
+  {
+    label: 'Municipal Officers',
+    icon: FiUsers,
+    path: '#',
+    roles: ['admin'],
+  },
+
+  {
+    label: 'Analytics',
+    icon: FiBarChart2,
+    path: '/analytics',
+    roles: ['citizen', 'municipal_officer', 'admin'],
+  },
+
+  {
+    label: 'Admin Portal',
+    icon: FiShield,
+    path: '/admin',
+    roles: ['admin'],
+  },
+
+  {
+    label: 'Notifications',
+    icon: FiBell,
+    path: '/notifications',
+    roles: ['citizen', 'municipal_officer', 'admin'],
+  },
+
+  {
+    label: 'Documents',
+    icon: FiFileText,
+    path: '#',
+    roles: ['admin'],
+  },
 ];
 
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
+  const { currentUser } = useAuth();
+  const userRole = currentUser?.role || 'citizen';
   const handleNavigation = (path: string) => {
     if (path && path !== '#') {
       navigate(path);
@@ -55,7 +99,13 @@ export const Sidebar = () => {
       <nav aria-label="Primary">
         <p className="sidebar__label">WORKSPACE</p>
 
-        {navigationItems.map(({ label, icon: Icon, path }) => (
+        {navigationItems
+              .filter(
+                (item) =>
+                  !item.roles ||
+                  item.roles.includes(userRole)
+              )
+        .map(({ label, icon: Icon, path }) => (
           <button
             type="button"
             key={label}

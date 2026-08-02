@@ -153,7 +153,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
     const otp = await authService.requestPasswordReset(parseResult.data);
     const response: { status: string; message: string; data?: { otp: string } } = {
       status: 'success',
-      message: 'If an account exists for that email, a verification code has been sent.',
+      message: 'A verification code has been sent to your email address.',
     };
     if (otp && process.env.NODE_ENV !== 'production') {
       console.info(`[Auth] Password reset OTP for ${parseResult.data.email}: ${otp}`);

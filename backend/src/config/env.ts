@@ -15,6 +15,11 @@ const envSchema = z.object({
   AI_INTERNAL_API_KEY: z.string().min(1, 'AI_INTERNAL_API_KEY environment variable is required'),
   CORS_ORIGIN: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 });
 
 

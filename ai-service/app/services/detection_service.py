@@ -121,7 +121,10 @@ class DetectionService:
                 
                 conf = float(box_data.conf[0])
                 class_id = int(box_data.cls[0])
-                class_name = model.names[class_id]
+                class_name = model.names.get(class_id, "Pothole")
+
+                if class_name == "0":
+                    class_name = "Pothole"
                 
                 # Center coordinates
                 cx = (x1 + x2) / 2.0

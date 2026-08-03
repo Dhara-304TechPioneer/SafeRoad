@@ -24,10 +24,20 @@ class YOLOModelLoader:
         if custom_model_path.exists():
             try:
                 logger.info(f"[AI Service] Loading custom YOLO model from {custom_model_path}...")
+
+                print("=" * 60)
+                print("CUSTOM MODEL FOUND")
+                print("Loading:", custom_model_path)
+
                 cls._model = YOLO(str(custom_model_path))
+
+                print("Model Classes:", cls._model.names)
+                print("=" * 60)
+
                 cls._model_name = "best.pt"
                 cls._is_loaded = True
                 logger.info("[AI Service] Custom YOLO model (best.pt) loaded successfully.")
+
                 return cls._model
             except Exception as e:
                 logger.error(f"[AI Service] Failed to load custom model from {custom_model_path}: {e}")

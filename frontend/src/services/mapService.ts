@@ -1,6 +1,41 @@
 import { getBackendMapReports, type BackendMapReport } from './reportService';
 import type { MapReport, MapSeverity, MapStatus } from '../types/map';
 
+export const mapBackendMapReportToMapReport = (r: BackendMapReport): MapReport => {
+  const severity = mapSeverity(r.severity);
+  const status = mapStatus(r.status);
+  const dateStr = r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString();
+
+  return {
+    id: r.id,
+    title: r.title || 'Pothole Report',
+    latitude: Number(r.latitude),
+    longitude: Number(r.longitude),
+    severity,
+    status,
+    reporter: 'Citizen User',
+    address: 'Gujarat',
+    description: r.title || 'Road incident report',
+    createdAt: dateStr,
+    updatedAt: dateStr,
+    image: 'Evidence image pending upload',
+    vehicleType: 'Car',
+    verificationStatus: r.status === 'REPORTED' ? 'Pending' : 'Officer Verified',
+    city: 'Gujarat',
+    incidentType: 'Pothole',
+    priority: severity === 'Critical' ? 'Urgent' : severity === 'High' ? 'Priority' : 'Standard',
+    estimatedRepairCost: '₹10,000',
+    estimatedRepairTime: severity === 'Critical' ? '4–8 hours' : '1–2 days',
+    assignedOfficer: 'Assigned Team',
+    department: 'Road Maintenance',
+    citizenReports: 1,
+    aiConfidence: 85,
+    detectionMethod: 'Citizen mobile report',
+    imageTimestamp: dateStr,
+    actionHistory: [{ status: 'Reported', date: dateStr }],
+  };
+};
+
 const mapSeverity = (severity?: string): MapSeverity => {
   if (!severity) return 'Medium';
   switch (severity.toUpperCase()) {
@@ -40,40 +75,7 @@ const mapStatus = (status?: string): MapStatus => {
 
 export const getMapReports = async (): Promise<MapReport[]> => {
   const backendReports = await getBackendMapReports();
-  return backendReports.map((r: BackendMapReport) => {
-    const severity = mapSeverity(r.severity);
-    const status = mapStatus(r.status);
-    const dateStr = r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString();
-
-    return {
-      id: r.id,
-      title: r.title || 'Pothole Report',
-      latitude: Number(r.latitude),
-      longitude: Number(r.longitude),
-      severity,
-      status,
-      reporter: 'Citizen User',
-      address: 'Gujarat',
-      description: r.title || 'Road incident report',
-      createdAt: dateStr,
-      updatedAt: dateStr,
-      image: 'Evidence image pending upload',
-      vehicleType: 'Car',
-      verificationStatus: r.status === 'REPORTED' ? 'Pending' : 'Officer Verified',
-      city: 'Gujarat',
-      incidentType: 'Pothole',
-      priority: severity === 'Critical' ? 'Urgent' : severity === 'High' ? 'Priority' : 'Standard',
-      estimatedRepairCost: '₹10,000',
-      estimatedRepairTime: severity === 'Critical' ? '4–8 hours' : '1–2 days',
-      assignedOfficer: 'Assigned Team',
-      department: 'Road Maintenance',
-      citizenReports: 1,
-      aiConfidence: 85,
-      detectionMethod: 'Citizen mobile report',
-      imageTimestamp: dateStr,
-      actionHistory: [{ status: 'Reported', date: dateStr }],
-    };
-  });
+  return backendReports.map(mapBackendMapReportToMapReport);
 };
 
 export const getLatestReports = (reports: MapReport[], limit = 6): MapReport[] =>

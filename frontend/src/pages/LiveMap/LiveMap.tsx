@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { InteractiveMap, MapControls, MapFilters, MapKpiCards, MapLegend, MapSidebar, MapToolbar, RecentMapReports } from '../../components/map';
-import { getLatestReports, getMapReports } from '../../services/mapService';
+import { useAuth } from '../../context/AuthContext';
+import { getLatestReports, getMapReports, mapBackendMapReportToMapReport } from '../../services/mapService';
 import { matchesMapFilters, sortMapReports, uniqueMapValues } from '../../services/mapUtils';
 import { useTransientNotice } from '../../hooks/useTransientNotice';
 import type { MapFiltersState, MapReport, MapSort } from '../../types/map';
+import type { BackendMapReport } from '../../services/reportService';
 import './LiveMap.css';
 
 const defaultFilters: MapFiltersState = {
@@ -28,10 +31,13 @@ export const LiveMap = () => {
   const [heatmap, setHeatmap] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [sort, setSort] = useState<MapSort>('Newest');
+  const { currentUser } = useAuth();
   const { notice, showNotice } = useTransientNotice(3500);
   const detailsRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const backendOrigin = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/api$/, '');
 
-  const loadReports = () => {
+  const loadReports = useCallback(() => {
     setIsRefreshing(true);
     setError(null);
     getMapReports()
@@ -45,11 +51,55 @@ export const LiveMap = () => {
         setIsRefreshing(false);
         setIsLoading(false);
       });
-  };
+  }, []);
+
+  const handleRealtimeReport = useCallback((payload: { report?: BackendMapReport }) => {
+    if (!payload?.report) {
+      return;
+    }
+
+    const nextReport = mapBackendMapReportToMapReport(payload.report);
+    setReports((currentReports) => {
+      const reportExists = currentReports.some((report) => report.id === nextReport.id);
+      if (reportExists) {
+        return currentReports;
+      }
+
+      return [nextReport, ...currentReports];
+    });
+    showNotice('New report received on the live map.');
+  }, [showNotice]);
 
   useEffect(() => {
     void loadReports();
-  }, []);
+  }, [loadReports]);
+
+  useEffect(() => {
+    const socket = io(backendOrigin, {
+      transports: ['websocket'],
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      if (currentUser) {
+        socket.emit('join', {
+          userId: currentUser.id,
+          role: currentUser.role.toUpperCase(),
+        });
+      }
+    });
+
+    socket.on('report-created', handleRealtimeReport);
+    socket.on('error', (payload: { message?: string }) => {
+      console.warn('[LiveMap Socket] Event error:', payload?.message || 'Unknown socket error');
+    });
+
+    return () => {
+      socket.off('report-created', handleRealtimeReport);
+      socket.disconnect();
+    };
+  }, [backendOrigin, currentUser, handleRealtimeReport]);
 
   const filteredReports = useMemo(
     () => sortMapReports(reports.filter((report) => matchesMapFilters(report, filters)), sort),

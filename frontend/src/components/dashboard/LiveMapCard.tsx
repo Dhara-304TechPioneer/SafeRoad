@@ -1,4 +1,5 @@
 // Map integration placeholder preserving the future map provider area.
+import { Link } from 'react-router-dom';
 import { FiArrowUpRight } from 'react-icons/fi';
 
 export const LiveMapCard = () => {
@@ -9,7 +10,7 @@ export const LiveMapCard = () => {
           <h2>Live road safety map</h2>
           <p>Real-time incident overview across New Delhi</p>
         </div>
-        <button className="text-button">Open full map <FiArrowUpRight /></button>
+        <Link className="text-button" to="/live-map">Open full map <FiArrowUpRight /></Link>
       </header>
       <div className="map-placeholder">
         <div className="map-road road-one" />

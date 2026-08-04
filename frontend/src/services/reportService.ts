@@ -287,7 +287,7 @@ export const submitReport = async (report: ReportRequest) => {
       latitude: Number(report.location.latitude || 0),
       longitude: Number(report.location.longitude || 0),
       address: [report.location.roadName, report.location.area, report.location.city].filter(Boolean).join(', '),
-      imageurl: report.image,
+      imageUrl: report.image,
     }),
   });
 };

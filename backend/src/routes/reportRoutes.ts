@@ -3,6 +3,7 @@ import {
   create,
   getAll,
   getById,
+  getMapReports,
   update,
   remove,
   getComments,
@@ -24,6 +25,7 @@ router.get('/my', (req, res, next) => {
   req.query.mine = 'true';
   getAll(req, res, next);
 });
+router.get('/map', getMapReports);
 router.get('/', getAll);
 router.get('/:id', getById);
 const requireManagementRoleForPrivilegedChanges = (

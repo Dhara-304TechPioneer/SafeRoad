@@ -14,6 +14,7 @@ import {
 export interface QuickAction {
   label: string;
   icon: IconType;
+  path?: string;
 }
 
 export interface DashboardMetric {
@@ -38,7 +39,7 @@ export interface TimelineEvent {
 
 export const quickActions: QuickAction[] = [
   { label: 'Report Pothole', icon: FiPlus },
-  { label: 'Open Live Map', icon: FiMapPin },
+  { label: 'Open Live Map', icon: FiMapPin, path: '/live-map' },
   { label: 'Run AI Detection', icon: FiRadio },
   { label: 'Create Complaint', icon: FiTool },
 ];

@@ -1,40 +1,79 @@
-import { mapReports } from '../data/mapData';
-import { getMyReports, getServerUrl, mapBackendSeverityToFrontend, mapBackendStatusToFrontend } from './reportService';
-import type { MapReport } from '../types/map';
+import { getBackendMapReports, type BackendMapReport } from './reportService';
+import type { MapReport, MapSeverity, MapStatus } from '../types/map';
+
+const mapSeverity = (severity?: string): MapSeverity => {
+  if (!severity) return 'Medium';
+  switch (severity.toUpperCase()) {
+    case 'LOW':
+      return 'Low';
+    case 'MEDIUM':
+      return 'Medium';
+    case 'HIGH':
+      return 'High';
+    case 'CRITICAL':
+      return 'Critical';
+    default:
+      return 'Medium';
+  }
+};
+
+const mapStatus = (status?: string): MapStatus => {
+  if (!status) return 'New';
+  switch (status.toUpperCase()) {
+    case 'REPORTED':
+      return 'New';
+    case 'AI_VERIFIED':
+    case 'NEEDS_REVIEW':
+      return 'Verified';
+    case 'OFFICER_ASSIGNED':
+    case 'ASSIGNED':
+      return 'Assigned';
+    case 'IN_PROGRESS':
+      return 'In Progress';
+    case 'FIXED':
+    case 'RESOLVED':
+      return 'Resolved';
+    default:
+      return 'New';
+  }
+};
 
 export const getMapReports = async (): Promise<MapReport[]> => {
-  try {
-    const res = await getMyReports();
-    const liveReports = res.items || [];
-    if (liveReports && liveReports.length > 0) {
+  const backendReports = await getBackendMapReports();
+  return backendReports.map((r: BackendMapReport) => {
+    const severity = mapSeverity(r.severity);
+    const status = mapStatus(r.status);
+    const dateStr = r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString();
 
-      return liveReports.map((r: any) => ({
-        id: r.id,
-        title: r.title || 'Pothole Report',
-        severity: mapBackendSeverityToFrontend(r.severity || 'MEDIUM'),
-        status: mapBackendStatusToFrontend(r.status || 'REPORTED'),
-        reporter: r.reporterName || 'Citizen User',
-        createdAt: r.createdAt || new Date().toISOString(),
-        location: {
-          roadName: r.address || 'Local Street',
-          area: 'Sector 1',
-          city: 'Ahmedabad',
-          latitude: Number(r.latitude || 23.0225),
-          longitude: Number(r.longitude || 72.5714),
-        },
-        vehicleType: 'Car',
-        verificationStatus: r.status === 'REPORTED' ? 'Pending' : 'Verified',
-        department: r.departmentName || 'Road Maintenance',
-        assignedTo: r.officerName,
-        aiVerified: Boolean(r.aiResult),
-        imageUrl: r.imageUrl ? getServerUrl(r.imageUrl) : undefined,
-        description: r.description || '',
-      }));
-    }
-  } catch (error) {
-    console.warn('[MapService] Could not fetch live map reports from backend API, falling back to static map data:', error);
-  }
-  return mapReports;
+    return {
+      id: r.id,
+      title: r.title || 'Pothole Report',
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      severity,
+      status,
+      reporter: 'Citizen User',
+      address: 'Gujarat',
+      description: r.title || 'Road incident report',
+      createdAt: dateStr,
+      updatedAt: dateStr,
+      image: 'Evidence image pending upload',
+      vehicleType: 'Car',
+      verificationStatus: r.status === 'REPORTED' ? 'Pending' : 'Officer Verified',
+      city: 'Gujarat',
+      incidentType: 'Pothole',
+      priority: severity === 'Critical' ? 'Urgent' : severity === 'High' ? 'Priority' : 'Standard',
+      estimatedRepairCost: '₹10,000',
+      estimatedRepairTime: severity === 'Critical' ? '4–8 hours' : '1–2 days',
+      assignedOfficer: 'Assigned Team',
+      department: 'Road Maintenance',
+      citizenReports: 1,
+      aiConfidence: 85,
+      detectionMethod: 'Citizen mobile report',
+      imageTimestamp: dateStr,
+      actionHistory: [{ status: 'Reported', date: dateStr }],
+    };
+  });
 };
 
 export const getLatestReports = (reports: MapReport[], limit = 6): MapReport[] =>
@@ -44,3 +83,4 @@ export const getLatestReports = (reports: MapReport[], limit = 6): MapReport[] =
 
 export const formatReportDate = (date: string): string =>
   new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date));
+

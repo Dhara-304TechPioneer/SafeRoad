@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapControls, MapFilters, MapKpiCards, MapLegend, MapPlaceholder, MapSidebar, MapToolbar, RecentMapReports } from '../../components/map';
+import { InteractiveMap, MapControls, MapFilters, MapKpiCards, MapLegend, MapSidebar, MapToolbar, RecentMapReports } from '../../components/map';
 import { getLatestReports, getMapReports } from '../../services/mapService';
 import { matchesMapFilters, sortMapReports, uniqueMapValues } from '../../services/mapUtils';
-import { mapReports } from '../../data/mapData';
 import { useTransientNotice } from '../../hooks/useTransientNotice';
 import type { MapFiltersState, MapReport, MapSort } from '../../types/map';
 import './LiveMap.css';
@@ -20,7 +19,9 @@ const defaultFilters: MapFiltersState = {
 };
 
 export const LiveMap = () => {
-  const [reports, setReports] = useState<MapReport[]>(mapReports);
+  const [reports, setReports] = useState<MapReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<MapFiltersState>(defaultFilters);
   const [selectedReport, setSelectedReport] = useState<MapReport | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -32,7 +33,18 @@ export const LiveMap = () => {
 
   const loadReports = () => {
     setIsRefreshing(true);
-    getMapReports().then(setReports).finally(() => setIsRefreshing(false));
+    setError(null);
+    getMapReports()
+      .then((data) => {
+        setReports(data);
+      })
+      .catch((err) => {
+        setError(err?.message || 'Failed to connect to backend server.');
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -73,7 +85,15 @@ export const LiveMap = () => {
           onReset={() => setFilters(defaultFilters)}
         />
         <div className="live-map-layout__centre">
-          <MapPlaceholder reports={filteredReports} selectedReport={selectedReport} zoom={zoom} heatmap={heatmap} onSelect={selectReport} />
+          <InteractiveMap
+            reports={filteredReports}
+            selectedReport={selectedReport}
+            zoom={zoom}
+            heatmap={heatmap}
+            isLoading={isLoading}
+            error={error}
+            onSelect={selectReport}
+          />
           <MapControls
             heatmap={heatmap}
             onZoomIn={() => setZoom((value) => Math.min(value + 1, 2))}

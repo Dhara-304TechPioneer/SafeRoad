@@ -1,4 +1,5 @@
 export { MapPlaceholder } from './MapPlaceholder';
+export { InteractiveMap } from './InteractiveMap';
 export { MapMarker } from './MapMarker';
 export { MapSidebar } from './MapSidebar';
 export { MapFilters } from './MapFilters';

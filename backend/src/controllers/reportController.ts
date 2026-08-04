@@ -362,3 +362,20 @@ export const addComment = async (
   }
 };
 
+export const getMapReports = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const reports = await reportService.getMapReports();
+    res.status(200).json({
+      status: 'success',
+      data: reports,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+

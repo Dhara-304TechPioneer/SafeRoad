@@ -299,5 +299,68 @@ export const uploadImage = async (image: File) => {
   return response.image_url;
 };
 
-export const getLocation = () => Promise.resolve();
+export interface BackendMapReport {
+  id: string;
+  title: string;
+  latitude: number;
+  longitude: number;
+  severity: string;
+  status: string;
+  createdAt: string;
+}
+
+export const getBackendMapReports = async (): Promise<BackendMapReport[]> => {
+  const response = await requestJson<any>('/reports/map', {
+    method: 'GET',
+  });
+  return response?.data || response || [];
+};
+
+export interface GeoLocationResult {
+  status: 'success' | 'denied' | 'unsupported' | 'unavailable';
+  latitude?: number;
+  longitude?: number;
+  message?: string;
+}
+
+export const getLocation = async (): Promise<GeoLocationResult> => {
+  if (!navigator.geolocation) {
+    return {
+      status: 'unsupported',
+      message: 'This browser does not support geolocation. You can still continue with the report form manually.',
+    };
+  }
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve({
+        status: 'success',
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        message: 'Location detected successfully.',
+      }),
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          resolve({
+            status: 'denied',
+            message: 'Location access was denied. You can retry anytime to auto-fill the coordinates.',
+          });
+          return;
+        }
+
+        resolve({
+          status: 'unavailable',
+          message: 'Location could not be detected right now. Please try again.',
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  });
+};
+
 export const runAI = () => Promise.resolve();
+

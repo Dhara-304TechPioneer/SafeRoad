@@ -284,3 +284,21 @@ export const addComment = async (
   };
 };
 
+export const getMapReports = async () => {
+  return prisma.report.findMany({
+    select: {
+      id: true,
+      title: true,
+      latitude: true,
+      longitude: true,
+      severity: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
+

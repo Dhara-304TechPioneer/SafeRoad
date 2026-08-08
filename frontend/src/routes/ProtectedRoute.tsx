@@ -3,13 +3,21 @@ import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext';
+import type { UserRole } from '../types/auth';
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowedRoles?: UserRole[];
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const getDefaultRouteForRole = (role: UserRole) => {
+  if (role === 'admin') return '/admin';
+  if (role === 'municipal_officer') return '/officer-dashboard';
+  return '/dashboard';
+};
+
+export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const { currentUser, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -49,6 +57,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && currentUser && !allowedRoles.includes(currentUser.role)) {
+    return <Navigate to={getDefaultRouteForRole(currentUser.role)} replace />;
   }
 
   return children;

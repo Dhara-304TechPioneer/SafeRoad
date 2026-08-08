@@ -18,8 +18,8 @@ export const getDashboard = async (
         new AppError('Access forbidden: insufficient permissions', 403)
       );
     }
-    const data = await analyticsService.getDashboardStats();
-    res.status(200).json(data);
+    const data = await analyticsService.getDashboardStats(req.user);
+    res.status(200).json({ status: 'success', data });
   } catch (error) {
     next(error);
   }

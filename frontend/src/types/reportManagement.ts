@@ -16,6 +16,12 @@ export interface ManagedReport {
   image_url?: string | null;
   aiConfidence?: number | null;
   aiSeverity?: string | null;
+  reporterName?: string | null;
+  reporterEmail?: string | null;
+  assignedOfficerName?: string | null;
+  assignedOfficerBadge?: string | null;
+  assignedOfficerDepartment?: string | null;
+  officerId?: string | null;
 }
 export interface ReportComment { author: string; role: string; message: string; timestamp: string; initials: string; }
 

@@ -33,7 +33,10 @@ const requireManagementRoleForPrivilegedChanges = (
   res: Response,
   next: NextFunction
 ): void => {
-  const privilegedFields = ['status', 'departmentId', 'officerId'];
+  if (Object.prototype.hasOwnProperty.call(req.body, 'officerId')) {
+    return requireRole('ADMIN')(req, res, next);
+  }
+  const privilegedFields = ['status', 'departmentId'];
   if (privilegedFields.some((field) => Object.prototype.hasOwnProperty.call(req.body, field))) {
     return requireRole('OFFICER', 'ADMIN')(req, res, next);
   }

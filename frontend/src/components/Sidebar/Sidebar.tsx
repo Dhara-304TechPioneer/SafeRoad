@@ -31,17 +31,17 @@ const navigationItems = [
   },
 
   {
-    label: 'Repair Requests',
-    icon: FiTool,
-    path: '#',
+    label: 'Officer Dashboard',
+    icon: FiUsers,
+    path: '/officer-dashboard',
     roles: ['municipal_officer', 'admin'],
   },
 
   {
-    label: 'Municipal Officers',
-    icon: FiUsers,
+    label: 'Repair Requests',
+    icon: FiTool,
     path: '#',
-    roles: ['admin'],
+    roles: ['municipal_officer', 'admin'],
   },
 
   {

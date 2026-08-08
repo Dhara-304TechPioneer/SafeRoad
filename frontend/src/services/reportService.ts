@@ -126,6 +126,13 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
 
   const imageUrl = report.image_url || report.attachments?.[0]?.url || null;
 
+  const reporterName = report.user?.fullName || null;
+  const reporterEmail = report.user?.email || null;
+  const assignedOfficerName = report.officer?.user?.fullName || null;
+  const assignedOfficerBadge = report.officer?.badgeNumber || null;
+  const assignedOfficerDepartment = report.officer?.department?.name || null;
+  const officerId = report.officerId || report.officer?.id || null;
+
   return {
     id: report.id,
     date: formattedDate,
@@ -141,6 +148,12 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
     image_url: imageUrl,
     aiConfidence,
     aiSeverity,
+    reporterName,
+    reporterEmail,
+    assignedOfficerName,
+    assignedOfficerBadge,
+    assignedOfficerDepartment,
+    officerId,
   };
 };
 
@@ -267,6 +280,14 @@ export const updateReportStatus = async (reportId: string, status: string, remar
     body: JSON.stringify({ status: backendStatus, remarks }),
   });
   return { success: true, status: response.status };
+};
+
+export const assignOfficerToReport = async (reportId: string, officerId: string) => {
+  const response = await requestJson<any>(`/reports/${reportId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ officerId, status: 'OFFICER_ASSIGNED' }),
+  });
+  return { success: true, data: response };
 };
 
 export const verifyReport = async (reportId: string, remarks?: string) => {

@@ -10,6 +10,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "seed": "ts-node src/prisma/seed.ts",
     "test": "jest --detectOpenHandles --runInBand",
     "test:coverage": "jest --coverage"
   },
@@ -54,6 +55,7 @@
     "typescript": "~5.7.3"
   },
   "prisma": {
-    "schema": "src/prisma/schema.prisma"
+    "schema": "src/prisma/schema.prisma",
+    "seed": "ts-node src/prisma/seed.ts"
   }
 }

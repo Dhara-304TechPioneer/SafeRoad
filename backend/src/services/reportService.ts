@@ -41,10 +41,24 @@ export const getReports = async (
   const skip = (page - 1) * limit;
 
   const where: Prisma.ReportWhereInput = {};
+  let officerRecord: { id: string } | null = null;
+
+  if (user.role === 'OFFICER') {
+    officerRecord = await prisma.officer.findFirst({
+      where: { userId: user.userId },
+      select: { id: true },
+    });
+  }
 
   // 1. Role-based visibility
   if (user.role === 'USER') {
     where.userId = user.userId;
+  } else if (user.role === 'OFFICER') {
+    if (filters.mine === 'true' || filters.mine === true) {
+      where.userId = user.userId;
+    } else if (officerRecord?.id) {
+      where.officerId = officerRecord.id;
+    }
   } else if (filters.mine === 'true' || filters.mine === true) {
     where.userId = user.userId;
   }
@@ -111,6 +125,13 @@ export const getReportById = async (
   id: string,
   user: { userId: string; role: string }
 ) => {
+  const officerRecord = user.role === 'OFFICER'
+    ? await prisma.officer.findFirst({
+        where: { userId: user.userId },
+        select: { id: true },
+      })
+    : null;
+
   const report = await prisma.report.findUnique({
     where: { id },
     include: {
@@ -142,6 +163,10 @@ export const getReportById = async (
     throw new AppError('Access forbidden to this report', 403);
   }
 
+  if (user.role === 'OFFICER' && report.officerId !== officerRecord?.id) {
+    throw new AppError('Access forbidden to this report', 403);
+  }
+
   return report;
 };
 
@@ -162,11 +187,41 @@ export const updateReport = async (
     throw new AppError('Access forbidden to update this report', 403);
   }
 
+  if (user.role === 'OFFICER') {
+    const officerRecord = await prisma.officer.findFirst({
+      where: { userId: user.userId },
+      select: { id: true },
+    });
+
+    if (report.officerId !== officerRecord?.id) {
+      throw new AppError('Access forbidden to update this report', 403);
+    }
+  }
+
   // USER role cannot alter status, departmentId or officerId
   let updateData: any = { ...input };
   if (user.role === 'USER') {
     const { status, departmentId, officerId, ...allowedData } = input as any;
     updateData = allowedData;
+  }
+
+  if (input.officerId) {
+    if (user.role !== 'ADMIN') {
+      throw new AppError('Only Admin can assign officers to reports', 403);
+    }
+    const officer = await prisma.officer.findUnique({
+      where: { id: input.officerId },
+      include: { user: true, department: true },
+    });
+    if (!officer || officer.user.role !== 'OFFICER') {
+      throw new AppError('Selected officer is invalid or not an officer account', 400);
+    }
+    if (!input.departmentId) {
+      updateData.departmentId = officer.departmentId;
+    }
+    if (!input.status && (report.status === 'REPORTED' || report.status === 'AI_VERIFIED' || report.status === 'NEEDS_REVIEW')) {
+      updateData.status = 'OFFICER_ASSIGNED';
+    }
   }
 
   return prisma.report.update({

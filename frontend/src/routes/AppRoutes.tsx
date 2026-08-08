@@ -19,6 +19,7 @@ import { VerifyOTP } from '../pages/VerifyOTP';
 
 import { ProtectedRoute } from './ProtectedRoute';
 import { ReportProvider } from '../context/ReportContext';
+import { OfficerDashboard } from '../pages/OfficerDashboard';
 
 const withAuthLayout = (page: React.ReactNode) => <AuthLayout>{page}</AuthLayout>;
 const LiveMap = lazy(() => import('../pages/LiveMap').then(({ LiveMap: Page }) => ({ default: Page })));
@@ -37,9 +38,10 @@ export const AppRoutes = () => {
         <Route path="/verify-otp" element={withAuthLayout(<VerifyOTP />)} />
         <Route path="/reset-password" element={withAuthLayout(<ResetPassword />)} />
         <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/officer-dashboard" element={<ProtectedRoute allowedRoles={['municipal_officer', 'admin']}><MainLayout><OfficerDashboard /></MainLayout></ProtectedRoute>} />
         <Route path="/live-map" element={withWorkspacePage(<LiveMap />)} />
         <Route path="/analytics" element={withWorkspacePage(<Analytics />)} />
-        <Route path="/admin" element={withWorkspacePage(<Admin />)} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Admin /></MainLayout></ProtectedRoute>} />
         <Route path="/report-pothole" element={<ProtectedRoute><MainLayout><ReportProvider><ReportPothole /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/report-success" element={<ProtectedRoute><MainLayout><ReportProvider><ReportSuccess /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/my-reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />

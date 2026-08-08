@@ -54,8 +54,15 @@ export const Login = () => {
         email: backendUser.email,
         role: mapRole(backendUser.role),
       });
-      
-      navigate('/dashboard');
+
+      const role = mapRole(backendUser.role);
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'municipal_officer') {
+        navigate('/officer-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setGeneralError(err.message || 'Login failed. Please check your credentials.');
     } finally {

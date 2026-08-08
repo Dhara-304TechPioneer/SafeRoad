@@ -88,13 +88,6 @@ export const Register = () => {
         <AuthInput label="Full name" id="register-name" value={form.fullName} error={errors.fullName} onChange={(event) => updateForm('fullName', event.target.value)} placeholder="Your full name" disabled={loading} />
         <AuthInput label="Email address" id="register-email" type="email" value={form.email} error={errors.email} onChange={(event) => updateForm('email', event.target.value)} placeholder="you@organization.gov" disabled={loading} />
         <AuthInput label="Phone number" id="register-phone" type="tel" value={form.phoneNumber} error={errors.phoneNumber} onChange={(event) => updateForm('phoneNumber', event.target.value)} placeholder="+91 98765 43210" disabled={loading} />
-        <label className="auth-field" htmlFor="register-role">
-          <span>Role</span>
-          <select className="auth-select" id="register-role" value={form.role} onChange={(event) => updateForm('role', event.target.value as UserRole)} disabled={loading}>
-            <option value="citizen">Citizen</option>
-            <option value="municipal_officer">Municipal Officer</option>
-          </select>
-        </label>
         <PasswordInput label="Password" id="register-password" value={form.password} error={errors.password} onChange={(event) => updateForm('password', event.target.value)} placeholder="Create a password" disabled={loading} />
         <PasswordInput label="Confirm password" id="register-confirm-password" value={form.confirmPassword} error={errors.confirmPassword} onChange={(event) => updateForm('confirmPassword', event.target.value)} placeholder="Repeat your password" disabled={loading} />
         <AuthCheckbox checked={form.acceptedTerms} onChange={(event) => updateForm('acceptedTerms', event.target.checked)} disabled={loading}>I agree to the Terms &amp; Conditions</AuthCheckbox>

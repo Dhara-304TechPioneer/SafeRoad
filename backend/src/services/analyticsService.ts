@@ -1,6 +1,51 @@
 import prisma from '../config/db';
 
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (user?: { userId: string; role: string }) => {
+  if (user?.role === 'OFFICER') {
+    const officerRecord = await prisma.officer.findFirst({
+      where: { userId: user.userId },
+      select: { id: true },
+    });
+
+    const officerId = officerRecord?.id;
+
+    if (!officerId) {
+      return {
+        totalAssignedReports: 0,
+        pendingVerification: 0,
+        aiVerifiedReports: 0,
+        reportsNeedsReview: 0,
+        inRepair: 0,
+        completedReports: 0,
+      };
+    }
+
+    const [
+      totalAssignedReports,
+      pendingVerification,
+      aiVerifiedReports,
+      reportsNeedsReview,
+      inRepair,
+      completedReports,
+    ] = await Promise.all([
+      prisma.report.count({ where: { officerId } }),
+      prisma.report.count({ where: { officerId, status: 'REPORTED' } }),
+      prisma.report.count({ where: { officerId, status: 'AI_VERIFIED' } }),
+      prisma.report.count({ where: { officerId, status: 'NEEDS_REVIEW' } }),
+      prisma.report.count({ where: { officerId, status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS'] } } }),
+      prisma.report.count({ where: { officerId, status: 'FIXED' } }),
+    ]);
+
+    return {
+      totalAssignedReports,
+      pendingVerification,
+      aiVerifiedReports,
+      reportsNeedsReview,
+      inRepair,
+      completedReports,
+    };
+  }
+
   const [
     totalReports,
     resolvedReports,

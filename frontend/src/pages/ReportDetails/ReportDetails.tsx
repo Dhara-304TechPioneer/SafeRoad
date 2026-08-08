@@ -1,13 +1,15 @@
 // Full citizen report view with backend integration and workflow status updates.
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getReportById, updateReportStatus } from '../../services/reportManagementService';
+import { getReportById, updateReportStatus, assignOfficerToReport } from '../../services/reportManagementService';
+import { fetchOfficers } from '../../services/adminService';
 import { CommentSection } from '../../components/reportManagement/CommentSection';
 import { ReportTimeline } from '../../components/reportManagement/ReportTimeline';
 import { SeverityBadge, StatusBadge } from '../../components/reportManagement/ReportBadges';
 import { getServerUrl } from '../../services/reportService';
 import { useAuth } from '../../context/AuthContext';
 import type { ManagedReport } from '../../types/reportManagement';
+import type { AdminOfficer } from '../../types/admin';
 import './ReportDetails.css';
 
 export const ReportDetails = () => {
@@ -20,7 +22,14 @@ export const ReportDetails = () => {
   const [statusRemarks, setStatusRemarks] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  // Admin Officer Assignment state
+  const [officersList, setOfficersList] = useState<AdminOfficer[]>([]);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string>('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignNotice, setAssignNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   const isOfficer = currentUser?.role === 'municipal_officer' || currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
 
   const loadReport = () => {
     if (!reportId) return;
@@ -29,6 +38,9 @@ export const ReportDetails = () => {
     getReportById(reportId)
       .then((data) => {
         setReport(data);
+        if (data.officerId) {
+          setSelectedOfficerId(data.officerId);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -41,19 +53,41 @@ export const ReportDetails = () => {
     loadReport();
   }, [reportId]);
 
+  useEffect(() => {
+    if (isAdmin) {
+      void fetchOfficers()
+        .then((officers) => setOfficersList(officers))
+        .catch(() => console.warn('Could not load officers list for admin assignment'));
+    }
+  }, [isAdmin]);
+
   const handleStatusUpdate = async (nextStatus: string) => {
     if (!report) return;
     setUpdating(true);
     try {
       await updateReportStatus(report.id, nextStatus, statusRemarks);
       setStatusRemarks('');
-      // Reload report
       const updated = await getReportById(report.id);
       setReport(updated);
     } catch (e: any) {
       alert(e.message || 'Failed to update workflow status. Make sure the transition is valid.');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleAssignOfficer = async () => {
+    if (!report || !selectedOfficerId) return;
+    setAssigning(true);
+    setAssignNotice(null);
+    try {
+      await assignOfficerToReport(report.id, selectedOfficerId);
+      setAssignNotice({ message: 'Officer assigned successfully!', type: 'success' });
+      loadReport();
+    } catch (e: any) {
+      setAssignNotice({ message: e.message || 'Failed to assign officer.', type: 'error' });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -95,7 +129,7 @@ export const ReportDetails = () => {
   return (
     <main className="report-details">
       <header>
-        <p className="eyebrow">REPORT {report.id}</p>
+        <p className="eyebrow">REPORT #{report.id.slice(0, 8)}</p>
         <h1>Report details</h1>
         <div className="report-badges">
           <SeverityBadge severity={report.severity} />
@@ -130,6 +164,24 @@ export const ReportDetails = () => {
               <div>
                 <dt>Submitted</dt>
                 <dd>{report.date}</dd>
+              </div>
+              <div>
+                <dt>Submitted by</dt>
+                <dd>{report.reporterName ? `${report.reporterName}${report.reporterEmail ? ` (${report.reporterEmail})` : ''}` : 'Citizen User'}</dd>
+              </div>
+              <div>
+                <dt>Assigned Officer</dt>
+                <dd>
+                  {report.assignedOfficerName ? (
+                    <span>
+                      {report.assignedOfficerName}
+                      {report.assignedOfficerBadge ? ` [${report.assignedOfficerBadge}]` : ''}
+                      {report.assignedOfficerDepartment ? ` - ${report.assignedOfficerDepartment}` : ''}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--muted)', fontWeight: 'normal' }}>Unassigned</span>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt>AI prediction</dt>
@@ -183,6 +235,63 @@ export const ReportDetails = () => {
             <ReportTimeline status={report.status} />
           </div>
 
+          {isAdmin && (
+            <div className="detail-section" style={{ marginTop: '20px', background: 'var(--surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <h3 style={{ margin: '0 0 8px 0' }}>Assign Officer (Admin)</h3>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '0 0 12px 0' }}>
+                Dispatch an officer to verify or manage repairs for this incident.
+              </p>
+
+              {assignNotice && (
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  marginBottom: '10px',
+                  background: assignNotice.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                  color: assignNotice.type === 'error' ? '#ef4444' : '#22c55e',
+                  border: `1px solid ${assignNotice.type === 'error' ? '#ef4444' : '#22c55e'}`
+                }}>
+                  {assignNotice.message}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <select
+                  value={selectedOfficerId}
+                  onChange={(e) => setSelectedOfficerId(e.target.value)}
+                  disabled={assigning}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-soft)', color: 'var(--text)' }}
+                >
+                  <option value="">Select Officer...</option>
+                  {officersList.map((officer) => (
+                    <option key={officer.id} value={officer.id}>
+                      {officer.name} {officer.badgeNumber ? `[${officer.badgeNumber}]` : ''} - {officer.department}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleAssignOfficer}
+                  disabled={assigning || !selectedOfficerId}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: (assigning || !selectedOfficerId) ? 'not-allowed' : 'pointer',
+                    opacity: (assigning || !selectedOfficerId) ? 0.6 : 1
+                  }}
+                >
+                  {assigning ? 'Assigning...' : report.assignedOfficerName ? 'Change Assigned Officer' : 'Save & Assign Officer'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {isOfficer && (
             <div className="detail-section" style={{ marginTop: '20px' }}>
               <h3>Update status (Officer)</h3>
@@ -216,4 +325,3 @@ export const ReportDetails = () => {
     </main>
   );
 };
-
